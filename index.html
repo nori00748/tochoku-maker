@@ -1825,7 +1825,7 @@ function addColumn() {
   colBand[newCi] = '外来';
   currentDates.forEach(d => {
     if (!slotData[d]) slotData[d]={};
-    slotData[d][newCi] = '';
+    slotData[d][newCi] = '✕'; // 新規外勤列は全日 ✕ をデフォルトに(勤務日設定で必要日だけ ○ に切替)
   });
   saveState(); renderPreviewEditable();
   renderNameClinicsPopupContent(); // ポップアップが開いていれば新しい外勤先を即反映
