@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" fill="none">
+  <rect x="0" y="0" width="320" height="180" rx="10" fill="#f8fbff"></rect>
+  
+  <g transform="translate(30 30)">
+    <rect x="0" y="0" width="80" height="120" rx="8" fill="#fff" stroke="#dbeafe"></rect>
+    <rect x="10" y="10" width="60" height="6" rx="2" fill="#1e40af"></rect>
+    <text x="10" y="32" font-family="Inter, Noto Sans JP" font-size="9" font-weight="700" fill="#1e40af">スタッフ</text>
+    <g transform="translate(10 40)"><circle cx="6" cy="6" r="6" fill="#bfdbfe"></circle><rect x="16" y="3" width="44" height="6" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 58)"><circle cx="6" cy="6" r="6" fill="#bfdbfe"></circle><rect x="16" y="3" width="44" height="6" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 76)"><circle cx="6" cy="6" r="6" fill="#bfdbfe"></circle><rect x="16" y="3" width="44" height="6" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 94)"><circle cx="6" cy="6" r="6" fill="#bfdbfe"></circle><rect x="16" y="3" width="44" height="6" rx="2" fill="#e2e8f0"></rect></g>
+  </g>
+  <g transform="translate(120 30)">
+    <rect x="0" y="0" width="80" height="120" rx="8" fill="#fff" stroke="#bfdbfe"></rect>
+    <rect x="10" y="10" width="60" height="6" rx="2" fill="#3b82f6"></rect>
+    <text x="10" y="32" font-family="Inter, Noto Sans JP" font-size="9" font-weight="700" fill="#1e40af">医員</text>
+    <g transform="translate(10 40)"><circle cx="5" cy="5" r="5" fill="#93c5fd"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 53)"><circle cx="5" cy="5" r="5" fill="#93c5fd"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 66)"><circle cx="5" cy="5" r="5" fill="#93c5fd"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 79)"><circle cx="5" cy="5" r="5" fill="#93c5fd"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 92)"><circle cx="5" cy="5" r="5" fill="#93c5fd"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 105)"><circle cx="5" cy="5" r="5" fill="#93c5fd"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g>
+  </g>
+  <g transform="translate(210 30)">
+    <rect x="0" y="0" width="80" height="120" rx="8" fill="#fff" stroke="#bfdbfe"></rect>
+    <rect x="10" y="10" width="60" height="6" rx="2" fill="#60a5fa"></rect>
+    <text x="10" y="32" font-family="Inter, Noto Sans JP" font-size="9" font-weight="700" fill="#1e40af">後期研修医</text>
+    <g transform="translate(10 40)"><circle cx="5" cy="5" r="5" fill="#60a5fa"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 55)"><circle cx="5" cy="5" r="5" fill="#60a5fa"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 70)"><circle cx="5" cy="5" r="5" fill="#60a5fa"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 85)"><circle cx="5" cy="5" r="5" fill="#60a5fa"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g><g transform="translate(10 100)"><circle cx="5" cy="5" r="5" fill="#60a5fa"></circle><rect x="14" y="2" width="44" height="5" rx="2" fill="#e2e8f0"></rect></g>
+  </g>
+</svg>
