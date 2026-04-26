@@ -29,10 +29,75 @@
   <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%233b82f6'/><stop offset='1' stop-color='%231e40af'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><text x='50%25' y='52%25' text-anchor='middle' dominant-baseline='middle' font-family='-apple-system,Hiragino Kaku Gothic ProN,sans-serif' font-weight='700' font-size='42' fill='white'>当</text></svg>">
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <!-- Clerk JS SDK (vanilla) -->
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_bXV0dWFsLXZlcnZldC03NC5jbGVyay5hY2NvdW50cy5kZXYk"
+    src="https://mutual-vervet-74.clerk.accounts.dev/npm/@clerk/[email protected]/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    /* ===== 認証ゲート(未ログイン時のフルスクリーン) ===== */
+    #auth-gate {
+      position: fixed; inset: 0; z-index: 10000;
+      background: linear-gradient(135deg,#f8fafc,#eef2ff);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #auth-gate.hidden { display: none; }
+    .auth-card {
+      background: #fff; border-radius: 16px;
+      box-shadow: 0 12px 48px rgba(15,23,42,.10), 0 1px 2px rgba(15,23,42,.04);
+      padding: 40px 36px; max-width: 440px; width: 100%;
+      text-align: center;
+    }
+    .auth-logo {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: linear-gradient(135deg,#3b82f6,#1e40af);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 28px;
+      margin: 0 auto 16px;
+      box-shadow: 0 4px 12px rgba(30,64,175,.25);
+    }
+    .auth-title { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px; letter-spacing: -.01em; }
+    .auth-sub   { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 24px; }
+    .auth-btn {
+      width: 100%; padding: 12px 16px; border: none; border-radius: 8px;
+      background: #2563eb; color: white; font-weight: 700; font-size: 14px;
+      cursor: pointer; transition: background .15s;
+      box-shadow: 0 1px 2px rgba(37,99,235,.2);
+    }
+    .auth-btn:hover { background: #1d4ed8; }
+    .auth-foot { margin-top: 18px; font-size: 11px; color: #94a3b8; line-height: 1.5; }
+    .auth-foot a { color: #2563eb; text-decoration: none; }
+    .auth-foot a:hover { text-decoration: underline; }
+    .auth-loading {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #cbd5e1; border-top-color: #2563eb;
+      border-radius: 50%; animation: auth-spin .8s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+    @keyframes auth-spin { to { transform: rotate(360deg); } }
+
+    /* ===== ログイン中ユーザーバッジ ===== */
+    #user-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: #475569; padding: 4px 10px;
+      background: #f1f5f9; border-radius: 999px; margin-left: 8px;
+      cursor: pointer;
+    }
+    #user-badge:hover { background: #e2e8f0; }
+    #user-badge .ub-avatar {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: linear-gradient(135deg,#3b82f6,#1e40af);
+      color: white; display: inline-flex; align-items: center;
+      justify-content: center; font-size: 10px; font-weight: 700;
+    }
+
     /* ===== デザイントークン ===== */
     :root {
       --bg:        #f6f7fb;
@@ -782,6 +847,30 @@
 </head>
 <body>
 
+<!-- ===== 認証ゲート(未ログイン時にフルスクリーン表示) ===== -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div class="auth-logo" aria-hidden="true">当</div>
+    <div class="auth-title">当直表メーカー</div>
+    <div class="auth-sub">
+      <span id="auth-loading-text">
+        <span class="auth-loading"></span>読み込み中…
+      </span>
+      <span id="auth-prompt-text" style="display:none;">
+        無料会員登録(Googleアカウント)で<br>
+        当直表のデータが安全に保存されます。
+      </span>
+    </div>
+    <button id="auth-signin-btn" class="auth-btn" style="display:none;" onclick="openSignIn()">
+      Googleでログイン / 会員登録
+    </button>
+    <div class="auth-foot">
+      ご利用には <a href="/terms" target="_blank">利用規約</a> および
+      <a href="/privacy" target="_blank">プライバシーポリシー</a> への同意が必要です。
+    </div>
+  </div>
+</div>
+
 <!-- ===== プロダクトツアー ===== -->
 <div id="tour-overlay" class="hidden"></div>
 <div id="tour-ring" style="display:none;"></div>
@@ -795,6 +884,10 @@
       <span class="brand-tag">beta</span>
     </div>
   </div>
+  <span id="user-badge" style="display:none;" onclick="openUserMenu()" title="アカウント">
+    <span class="ub-avatar" id="ub-avatar">?</span>
+    <span id="ub-name">…</span>
+  </span>
   <button class="help-btn" onclick="openTour()" title="使い方を見る">? 使い方</button>
 </div>
 <div id="main">
@@ -885,10 +978,9 @@
 
 <script>
 const WD = ['日','月','火','水','木','金','土'];
-const STORAGE_NAMES = 'tochoku_g_names';
-const STORAGE_STATE = 'tochoku_g_state';
+// localStorage は廃止。データは Clerk認証 + Neon Postgres で保存。
+// チュートリアル既読フラグだけブラウザ側で持つ(ユーザーごとのデータではないため)
 const STORAGE_TUTORIAL = 'tochoku_g_tutorial_done';
-const STORAGE_UNDO = 'tochoku_g_undo'; // 【無料プラン】1ステップだけ戻る用のスナップショット
 
 // ===== State =====
 let groups = [
@@ -1038,41 +1130,8 @@ function updateGroupSelect() {
 }
 
 // ===== Name Management =====
-function saveNames() {
-  try { localStorage.setItem(STORAGE_NAMES, JSON.stringify({ groups, names, nameGroups, nameOutsides })); } catch(e) {}
-}
-function loadNames() {
-  try {
-    const raw = localStorage.getItem(STORAGE_NAMES);
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    if (s.groups) {
-      groups = s.groups;
-      // 旧データにないフィールドにデフォルト値を補完
-      groups.forEach(g => {
-        const legacy = g.maxDuty ?? 0;
-        if (g.maxDutyWD  == null) g.maxDutyWD  = legacy;
-        if (g.maxDutyWE  == null) g.maxDutyWE  = legacy;
-        // 旧 maxWaiting は廃止。オンコール/副直 回数上限はグループごとのオブジェクトで保持。
-        if (!g.maxOnCall  || typeof g.maxOnCall  !== 'object') g.maxOnCall  = {};
-        if (!g.maxSubDuty || typeof g.maxSubDuty !== 'object') g.maxSubDuty = {};
-        delete g.maxWaiting;
-      });
-      // 既存のオンコール列に対して、各グループの maxOnCall 未設定を 0 に初期化
-      // (UI表示と実データを一致させる)
-      const onCallCount = (typeof COLS !== 'undefined' ? COLS : []).filter(c => c && c.isOnCall).length;
-      groups.forEach(g => {
-        for (let i = 1; i <= onCallCount; i++) {
-          if (g.maxOnCall[i] == null) g.maxOnCall[i] = 0;
-        }
-      });
-      gidSeq = Math.max(...groups.map(g=>parseInt(g.id.slice(1))||0)) + 1;
-    }
-    if (s.names)        names = s.names;
-    if (s.nameGroups)   Object.assign(nameGroups, s.nameGroups);
-    if (s.nameOutsides) Object.assign(nameOutsides, s.nameOutsides);
-  } catch(e) {}
-}
+// saveNames / loadNames はクラウド統一版を後方で定義しているのでここでは何もしない
+// (旧 localStorage 直書き版は廃止)
 
 function addName() {
   const inp = document.getElementById('name-input');
@@ -3367,85 +3426,175 @@ function renderExcelPreview() {
 }
 
 // ===== State save/load =====
-function saveState() {
+// =============================================================
+// 状態の永続化 (Clerk認証 + Vercel API + Neon Postgres)
+// localStorage は使わず、ログインユーザーごとに /api/state で保存
+// =============================================================
+let _undoSnapshot = null;     // メモリ上の1ステップundoスナップショット (JSON文字列)
+let _saveTimer = null;        // 保存デバウンスタイマー
+let _isApplyingState = false; // 状態復元中の二重保存防止
+
+// 名前データ + 状態データを1つのJSONに固める
+function _buildStateBlob() {
+  const rosterSave = storedRoster
+    ? storedRoster.map(({d,w,isWeekend,duty,nichoku,waiting,clinics,clinicsNichoku}) =>
+        ({d,w,isWeekend,duty,nichoku,waiting,clinics,clinicsNichoku}))
+    : null;
+  return {
+    // names系
+    groups, names, nameGroups, nameOutsides,
+    // state系 (gridDataはセッション限り、永続化対象外)
+    currentDates, slotData, dutyOpen, bikoData, gakkaiData,
+    holidayDates, colBand, roster: rosterSave, cols: COLS, preAssigned, splitDays,
+    dutyOpenNichoku, slotDataNichoku, recoveryData, workPatterns, dayModes
+  };
+}
+
+// 復元: APIから取得したJSONをグローバル変数に展開
+function _applyStateBlob(s) {
+  if (!s) return;
+  _isApplyingState = true;
   try {
-    // 【無料プラン: 1ステップundo】書き換え前のstateをundo枠に退避
-    const prev = localStorage.getItem(STORAGE_STATE);
-    if (prev) {
-      localStorage.setItem(STORAGE_UNDO, prev);
-      updateUndoButton();
+    if (s.groups) {
+      groups = s.groups;
+      groups.forEach(g => {
+        const legacy = g.maxDuty ?? 0;
+        if (g.maxDutyWD == null) g.maxDutyWD = legacy;
+        if (g.maxDutyWE == null) g.maxDutyWE = legacy;
+        if (!g.maxOnCall  || typeof g.maxOnCall  !== 'object') g.maxOnCall  = {};
+        if (!g.maxSubDuty || typeof g.maxSubDuty !== 'object') g.maxSubDuty = {};
+        delete g.maxWaiting;
+      });
+      gidSeq = Math.max(0, ...groups.map(g=>parseInt((g.id||'').slice(1))||0)) + 1;
     }
-    const rosterSave = storedRoster
-      ? storedRoster.map(({d,w,isWeekend,duty,nichoku,waiting,clinics,clinicsNichoku}) =>
-          ({d,w,isWeekend,duty,nichoku,waiting,clinics,clinicsNichoku}))
-      : null;
-    localStorage.setItem(STORAGE_STATE, JSON.stringify({
-      // gridData(勤務者チェックの ○/✕)は永続化しない(セッション限り)
-      currentDates, slotData, dutyOpen, bikoData, gakkaiData,
-      holidayDates, colBand, roster: rosterSave, cols: COLS, preAssigned, splitDays,
-      dutyOpenNichoku, slotDataNichoku, recoveryData, workPatterns, dayModes
-    }));
-  } catch(e) {}
-}
+    if (s.names)        names = s.names;
+    if (s.nameGroups)   Object.assign(nameGroups, s.nameGroups);
+    if (s.nameOutsides) Object.assign(nameOutsides, s.nameOutsides);
 
-// 【無料プラン】1ステップundo(直前の1操作だけ戻せる)
-function doUndo() {
-  const snap = localStorage.getItem(STORAGE_UNDO);
-  if (!snap) return;
-  try {
-    localStorage.setItem(STORAGE_STATE, snap);
-    localStorage.removeItem(STORAGE_UNDO);
-  } catch(e) { return; }
-  // ページ再読み込みで綺麗にstateを復元
-  location.reload();
-}
-
-function updateUndoButton() {
-  const btn = document.getElementById('undo-btn');
-  if (!btn) return;
-  const can = !!localStorage.getItem(STORAGE_UNDO);
-  btn.disabled = !can;
-  btn.style.opacity = can ? '1' : '.4';
-  btn.style.cursor  = can ? 'pointer' : 'not-allowed';
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_STATE);
-    if (!raw) return false;
-    const s = JSON.parse(raw);
     if (s.cols)         COLS = s.cols;
     if (s.currentDates) currentDates = s.currentDates;
-    // gridData は永続化対象外(セッション限り)
     if (s.slotData)     Object.assign(slotData,   s.slotData);
     if (s.dutyOpen)     Object.assign(dutyOpen,   s.dutyOpen);
     if (s.bikoData)     Object.assign(bikoData,   s.bikoData);
     if (s.gakkaiData)   Object.assign(gakkaiData, s.gakkaiData);
     if (s.holidayDates) Object.assign(holidayDates, s.holidayDates);
     if (s.colBand)      Object.assign(colBand, s.colBand);
-    // 旧データの taikiMode は廃止済みのため読み捨て
-    if (s.preAssigned) Object.assign(preAssigned, s.preAssigned);
-    if (s.splitDays)   Object.assign(splitDays, s.splitDays);
+    if (s.preAssigned)  Object.assign(preAssigned, s.preAssigned);
+    if (s.splitDays)    Object.assign(splitDays, s.splitDays);
     if (s.dutyOpenNichoku) Object.assign(dutyOpenNichoku, s.dutyOpenNichoku);
     if (s.slotDataNichoku) Object.assign(slotDataNichoku, s.slotDataNichoku);
     if (s.recoveryData)    Object.assign(recoveryData, s.recoveryData);
     if (s.workPatterns)    Object.assign(workPatterns, s.workPatterns);
     if (s.dayModes)        Object.assign(dayModes, s.dayModes);
-    if (currentDates.length) {
-      document.getElementById('start-date').value = currentDates[0];
-      document.getElementById('end-date').value   = currentDates[currentDates.length-1];
-    }
     if (s.roster) {
       storedRoster = s.roster.map(row => ({...row, dt: new Date(row.d+'T00:00:00')}));
-      renderRosterFromStored();
-      document.getElementById('preview-btn').style.display = 'inline-flex';
-      switchTab('roster');
-    } else if (currentDates.length) {
-      renderPreviewEditable();
     }
-    return true;
-  } catch(e) { return false; }
+  } finally {
+    _isApplyingState = false;
+  }
 }
+
+// API: GET /api/state
+async function _apiLoadState() {
+  if (!window.Clerk || !Clerk.session) return null;
+  try {
+    const token = await Clerk.session.getToken();
+    const res = await fetch('/api/state', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.state || null;
+  } catch (e) {
+    console.error('load state error', e);
+    return null;
+  }
+}
+
+// API: POST /api/state (デバウンス)
+function _apiSaveStateDebounced() {
+  if (_isApplyingState) return; // 復元中は保存しない
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async () => {
+    if (!window.Clerk || !Clerk.session) return;
+    try {
+      const token = await Clerk.session.getToken();
+      const blob = _buildStateBlob();
+      await fetch('/api/state', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ state: blob })
+      });
+    } catch (e) {
+      console.error('save state error', e);
+    }
+  }, 800);
+}
+
+// 互換用: 既存コードからの呼び出しを受ける
+function saveNames() {
+  if (_isApplyingState) return;
+  // undoは取らずに直接保存(名前変更のみで毎回スナップショットを残すと冗長なため)
+  _apiSaveStateDebounced();
+}
+
+function saveState() {
+  if (_isApplyingState) return;
+  // 1ステップundo: 現在の状態をスナップショットに退避
+  try { _undoSnapshot = JSON.stringify(_buildStateBlob()); } catch(e) {}
+  updateUndoButton();
+  _apiSaveStateDebounced();
+}
+
+// 1ステップundo
+function doUndo() {
+  if (!_undoSnapshot) return;
+  try {
+    const snap = JSON.parse(_undoSnapshot);
+    _undoSnapshot = null;
+    _applyStateBlob(snap);
+    _apiSaveStateDebounced(); // 戻した状態を保存
+    location.reload();        // 描画をクリーンに反映
+  } catch(e) {}
+}
+
+function updateUndoButton() {
+  const btn = document.getElementById('undo-btn');
+  if (!btn) return;
+  const can = !!_undoSnapshot;
+  btn.disabled = !can;
+  btn.style.opacity = can ? '1' : '.4';
+  btn.style.cursor  = can ? 'pointer' : 'not-allowed';
+}
+
+// 起動時に呼ばれる: APIから状態を取得して展開、UIを再描画
+async function loadStateFromCloud() {
+  const s = await _apiLoadState();
+  if (!s) return false;
+  _applyStateBlob(s);
+  if (currentDates.length) {
+    const sd = document.getElementById('start-date');
+    const ed = document.getElementById('end-date');
+    if (sd) sd.value = currentDates[0];
+    if (ed) ed.value = currentDates[currentDates.length-1];
+  }
+  if (storedRoster) {
+    renderRosterFromStored();
+    const pb = document.getElementById('preview-btn');
+    if (pb) pb.style.display = 'inline-flex';
+    switchTab('roster');
+  } else if (currentDates.length) {
+    renderPreviewEditable();
+  }
+  return true;
+}
+
+// 旧来のloadNames/loadStateは互換のため残しているが何もしない
+function loadNames() { /* no-op (cloud版に統一) */ }
+function loadState() { return false; /* 互換用ダミー */ }
 
 // ===== Resizer =====
 (function() {
@@ -4144,17 +4293,83 @@ function _tourPos(idx) {
 }
 
 // ===== Init =====
-(function() {
-  loadNames();
+// =============================================================
+// 起動シーケンス: Clerk認証 → API取得 → アプリ初期化
+// =============================================================
+
+// 日本語ローカライズ (主要文字列のみ)
+const _clerkJaJP = {
+  locale: 'ja-JP',
+  socialButtonsBlockButton: '{{provider|titleize}}でつづける',
+  dividerText: 'または',
+  formButtonPrimary: '続ける',
+  signIn: {
+    start: { title: 'ログイン', subtitle: '当直表メーカーにアクセス' },
+    emailCode: { title: '確認コードを入力', subtitle: 'メールに送られたコードを入力してください' }
+  },
+  signUp: {
+    start: { title: '会員登録', subtitle: 'Googleアカウントで簡単登録' }
+  },
+  userButton: {
+    action__manageAccount: 'アカウント管理',
+    action__signOut: 'ログアウト'
+  },
+  userProfile: {
+    navbar: { title: 'アカウント', description: 'アカウント情報を管理' }
+  }
+};
+
+function openSignIn() {
+  if (!window.Clerk) return;
+  Clerk.openSignIn({ afterSignInUrl: '/app', afterSignUpUrl: '/app' });
+}
+function openUserMenu() {
+  if (!window.Clerk) return;
+  Clerk.openUserProfile();
+}
+
+function _showAuthGate() {
+  const g = document.getElementById('auth-gate');
+  if (g) g.classList.remove('hidden');
+  const lt = document.getElementById('auth-loading-text');
+  const pt = document.getElementById('auth-prompt-text');
+  const sb = document.getElementById('auth-signin-btn');
+  if (lt) lt.style.display = 'none';
+  if (pt) pt.style.display = '';
+  if (sb) sb.style.display = '';
+}
+function _hideAuthGate() {
+  const g = document.getElementById('auth-gate');
+  if (g) g.classList.add('hidden');
+}
+
+function _showUserBadge(user) {
+  const b = document.getElementById('user-badge');
+  const n = document.getElementById('ub-name');
+  const a = document.getElementById('ub-avatar');
+  if (!b || !user) return;
+  const display = user.firstName || user.username || user.primaryEmailAddress?.emailAddress || 'ユーザー';
+  if (n) n.textContent = display;
+  if (a) a.textContent = (display[0] || '?').toUpperCase();
+  b.style.display = '';
+}
+
+async function _initAppForUser() {
+  // クラウドから状態を取得
+  const loaded = await loadStateFromCloud();
+  if (!loaded) {
+    // 新規ユーザー: デフォルトの日付範囲を入れておく
+    const t = new Date(), y = t.getFullYear(), m = String(t.getMonth()+1).padStart(2,'0');
+    const last = new Date(t.getFullYear(), t.getMonth()+1, 0);
+    const sd = document.getElementById('start-date');
+    const ed = document.getElementById('end-date');
+    if (sd) sd.value = `${y}-${m}-01`;
+    if (ed) ed.value = last.toISOString().slice(0,10);
+  }
   updateGroupSelect();
   renderGroupsAndNames();
-  if (!loadState()) {
-    const t=new Date(), y=t.getFullYear(), m=String(t.getMonth()+1).padStart(2,'0');
-    const last = new Date(t.getFullYear(), t.getMonth()+1, 0);
-    document.getElementById('start-date').value = `${y}-${m}-01`;
-    document.getElementById('end-date').value   = last.toISOString().slice(0,10);
-  }
-  // loadState で COLS が確定したあと、グループのオンコール/副直 上限を 0 で初期化
+
+  // グループの maxOnCall / maxSubDuty を 0 でバックフィル
   const onCallCnt  = COLS.filter(c => c.isOnCall).length;
   const subDutyCnt = COLS.filter(c => c.isSubduty).length;
   let needsGroupsRerender = false;
@@ -4169,48 +4384,87 @@ function _tourPos(idx) {
     }
   });
   if (needsGroupsRerender) { saveNames(); renderGroupsAndNames(); }
-  // 【無料プラン】起動時にundoボタンの状態を反映
+
   updateUndoButton();
-  // オンコール/副直ボタンの現在数を反映
   updateOnCallButton();
   updateSubDutyButton();
-  // 起動時にも勤務者チェックの名前一覧を描画(日付未設定でも名前行を見せる)
   renderGrid();
-  // Ctrl+Z / Cmd+Z ショートカットで1ステップundo + Escでポップアップ閉じる
-  document.addEventListener('keydown', (e) => {
-    const tag = (e.target && e.target.tagName) || '';
-    if (e.key === 'Escape') {
-      closeNameClinicsPopup();
-      closeWorkDaysPopup();
-      // ツアー表示中なら閉じる
-      const tt = document.getElementById('tour-tooltip');
-      if (tt && !tt.classList.contains('hidden')) closeTour();
-      return;
-    }
-    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return; // 文字入力中は無視
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
-      e.preventDefault();
-      doUndo();
-    }
-  });
-  // 外側クリックでポップアップを閉じる
-  document.addEventListener('click', (e) => {
-    const popup = document.getElementById('name-clinics-popup');
-    if (popup && popup.classList.contains('show')) {
-      if (!popup.contains(e.target) && !(e.target.closest && e.target.closest('.name-tag'))) {
-        closeNameClinicsPopup();
-      }
-    }
-    const wdp = document.getElementById('work-days-popup');
-    if (wdp && wdp.classList.contains('show')) {
-      // ポップアップ内クリック or 勤務日セルクリックは無視
-      if (!wdp.contains(e.target) && !(e.target.closest && e.target.closest('[onclick*="openWorkDaysPopup"]'))) {
-        closeWorkDaysPopup();
-      }
-    }
-  });
-  // 初回起動時のみプロダクトツアーを表示
+
+  _showUserBadge(Clerk.user);
+  _hideAuthGate();
+
+  // 初回ユーザーのみツアー
   if (!localStorage.getItem(STORAGE_TUTORIAL)) openTour();
+}
+
+// グローバルなショートカット・クリックリスナーは認証状態に関わらず登録(常時必要)
+document.addEventListener('keydown', (e) => {
+  const tag = (e.target && e.target.tagName) || '';
+  if (e.key === 'Escape') {
+    closeNameClinicsPopup();
+    closeWorkDaysPopup();
+    const tt = document.getElementById('tour-tooltip');
+    if (tt && !tt.classList.contains('hidden')) closeTour();
+    return;
+  }
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+    e.preventDefault();
+    doUndo();
+  }
+});
+document.addEventListener('click', (e) => {
+  const popup = document.getElementById('name-clinics-popup');
+  if (popup && popup.classList.contains('show')) {
+    if (!popup.contains(e.target) && !(e.target.closest && e.target.closest('.name-tag'))) {
+      closeNameClinicsPopup();
+    }
+  }
+  const wdp = document.getElementById('work-days-popup');
+  if (wdp && wdp.classList.contains('show')) {
+    if (!wdp.contains(e.target) && !(e.target.closest && e.target.closest('[onclick*="openWorkDaysPopup"]'))) {
+      closeWorkDaysPopup();
+    }
+  }
+});
+
+// Clerk のロード完了を待ってから初期化
+async function _waitForClerk() {
+  const start = Date.now();
+  while (!(window.Clerk && Clerk.load)) {
+    if (Date.now() - start > 15000) throw new Error('Clerk load timeout');
+    await new Promise(r => setTimeout(r, 50));
+  }
+}
+
+(async function bootstrap() {
+  try {
+    await _waitForClerk();
+    await Clerk.load({ localization: _clerkJaJP });
+  } catch (e) {
+    console.error('Clerk init failed', e);
+    const lt = document.getElementById('auth-loading-text');
+    if (lt) lt.innerHTML = '⚠ ログイン基盤の読込に失敗しました。ページを再読込してください。';
+    return;
+  }
+
+  if (Clerk.user && Clerk.session) {
+    await _initAppForUser();
+  } else {
+    _showAuthGate();
+  }
+
+  // ログイン状態の変化を監視
+  Clerk.addListener(async (resources) => {
+    if (resources.user && resources.session) {
+      await _initAppForUser();
+    } else {
+      // ログアウトされた場合は再びゲート表示
+      _showAuthGate();
+      const b = document.getElementById('user-badge');
+      if (b) b.style.display = 'none';
+    }
+  });
 })();
 </script>
 
