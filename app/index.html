@@ -29,13 +29,10 @@
   <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%233b82f6'/><stop offset='1' stop-color='%231e40af'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><text x='50%25' y='52%25' text-anchor='middle' dominant-baseline='middle' font-family='-apple-system,Hiragino Kaku Gothic ProN,sans-serif' font-weight='700' font-size='42' fill='white'>当</text></svg>">
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-  <!-- Clerk JS SDK (vanilla) -->
+  <!-- Clerk JS SDK (vanilla) - jsDelivr CDN 経由(CORS / メール難読化問題を回避) -->
   <script
-    async
-    crossorigin="anonymous"
     data-clerk-publishable-key="pk_test_bXV0dWFsLXZlcnZldC03NC5jbGVyay5hY2NvdW50cy5kZXYk"
-    src="https://mutual-vervet-74.clerk.accounts.dev/npm/@clerk/[email protected]/dist/clerk.browser.js"
-    type="text/javascript"
+    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
   ></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
