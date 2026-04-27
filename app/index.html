@@ -182,11 +182,12 @@
       font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1;
     }
 
-    /* ===== ログイン中ユーザーバッジ ===== */
+    /* ===== ログイン中ユーザーバッジ + ドロップダウン ===== */
+    #user-badge-wrap { position: relative; margin-left: 8px; display: inline-block; }
     #user-badge {
       display: inline-flex; align-items: center; gap: 6px;
       font-size: 12px; color: #475569; padding: 4px 10px;
-      background: #f1f5f9; border-radius: 999px; margin-left: 8px;
+      background: #f1f5f9; border-radius: 999px;
       cursor: pointer;
     }
     #user-badge:hover { background: #e2e8f0; }
@@ -195,6 +196,34 @@
       background: linear-gradient(135deg,#3b82f6,#1e40af);
       color: white; display: inline-flex; align-items: center;
       justify-content: center; font-size: 10px; font-weight: 700;
+    }
+    #user-badge .ub-caret {
+      font-size: 9px; color: #94a3b8; margin-left: 2px;
+    }
+    #user-menu {
+      display: none; position: absolute; top: 100%; right: 0; margin-top: 6px;
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(15,23,42,.10);
+      min-width: 180px; z-index: 1000;
+      overflow: hidden;
+    }
+    #user-menu.show { display: block; }
+    #user-menu .um-item {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; padding: 9px 14px; background: #fff; border: none;
+      font-size: 13px; color: #334155; cursor: pointer; text-align: left;
+      transition: background .12s, color .12s;
+    }
+    #user-menu .um-item:hover { background: #f8fafc; color: #0f172a; }
+    #user-menu .um-item.danger { color: #dc2626; }
+    #user-menu .um-item.danger:hover { background: #fef2f2; color: #b91c1c; }
+    #user-menu hr {
+      border: none; border-top: 1px solid #e2e8f0; margin: 0;
+    }
+    #user-menu .um-email {
+      padding: 10px 14px; font-size: 11px; color: #94a3b8;
+      border-bottom: 1px solid #e2e8f0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
 
     /* ===== デザイントークン ===== */
@@ -990,9 +1019,22 @@
       <span class="brand-tag">beta</span>
     </div>
   </div>
-  <span id="user-badge" style="display:none;" onclick="openUserMenu()" title="アカウント">
-    <span class="ub-avatar" id="ub-avatar">?</span>
-    <span id="ub-name">…</span>
+  <span id="user-badge-wrap" style="display:none;">
+    <span id="user-badge" onclick="toggleUserMenu(event)" title="メニューを開く">
+      <span class="ub-avatar" id="ub-avatar">?</span>
+      <span id="ub-name">…</span>
+      <span class="ub-caret">▾</span>
+    </span>
+    <div id="user-menu">
+      <div class="um-email" id="um-email">…</div>
+      <button class="um-item" onclick="closeUserMenu();openUserMenu()">
+        ⚙️ アカウント情報
+      </button>
+      <hr>
+      <button class="um-item danger" onclick="closeUserMenu();signOut()">
+        🚪 ログアウト
+      </button>
+    </div>
   </span>
   <button class="help-btn" onclick="openTour()" title="使い方を見る">? 使い方</button>
 </div>
@@ -4578,6 +4620,33 @@ function openUserMenu() {
   Clerk.openUserProfile();
 }
 
+// バッジクリック → ドロップダウン開閉
+function toggleUserMenu(e) {
+  if (e) e.stopPropagation();
+  const m = document.getElementById('user-menu');
+  if (!m) return;
+  m.classList.toggle('show');
+}
+function closeUserMenu() {
+  const m = document.getElementById('user-menu');
+  if (m) m.classList.remove('show');
+}
+
+// ログアウト
+async function signOut() {
+  if (!window.Clerk) return;
+  if (!confirm('ログアウトします。よろしいですか?')) return;
+  try {
+    await Clerk.signOut();
+    // ログアウト後はクラウドモード解除 → ゲストモードフラグも残ってないので認証ゲートへ
+    _mode = null;
+    location.href = '/app';
+  } catch (e) {
+    alert('ログアウトに失敗しました。再度お試しください。');
+    console.error(e);
+  }
+}
+
 function _showAuthGate() {
   const g = document.getElementById('auth-gate');
   if (g) g.classList.remove('hidden');
@@ -4594,14 +4663,16 @@ function _hideAuthGate() {
 }
 
 function _showUserBadge(user) {
-  const b = document.getElementById('user-badge');
+  const wrap = document.getElementById('user-badge-wrap');
   const n = document.getElementById('ub-name');
   const a = document.getElementById('ub-avatar');
-  if (!b || !user) return;
+  const em = document.getElementById('um-email');
+  if (!wrap || !user) return;
   const display = user.firstName || user.username || user.primaryEmailAddress?.emailAddress || 'ユーザー';
   if (n) n.textContent = display;
   if (a) a.textContent = (display[0] || '?').toUpperCase();
-  b.style.display = '';
+  if (em) em.textContent = user.primaryEmailAddress?.emailAddress || '';
+  wrap.style.display = '';
 }
 
 // ===== ゲストモード関連 =====
@@ -4751,6 +4822,13 @@ document.addEventListener('click', (e) => {
       closeWorkDaysPopup();
     }
   }
+  // ユーザーメニューの外側クリックで閉じる
+  const um = document.getElementById('user-menu');
+  if (um && um.classList.contains('show')) {
+    if (!um.contains(e.target) && !(e.target.closest && e.target.closest('#user-badge'))) {
+      closeUserMenu();
+    }
+  }
 });
 
 // Clerk のロード完了を待ってから初期化
@@ -4803,8 +4881,9 @@ async function _waitForClerk() {
     } else if (_mode !== 'guest') {
       // ログアウトでゲストモードでないなら認証ゲート再表示
       _showAuthGate();
-      const b = document.getElementById('user-badge');
-      if (b) b.style.display = 'none';
+      const wrap = document.getElementById('user-badge-wrap');
+      if (wrap) wrap.style.display = 'none';
+      closeUserMenu();
     }
   });
 })();
