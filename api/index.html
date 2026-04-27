@@ -1,0 +1,4767 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>当直表メーカー | 大学医局の当直・外勤表を最速で作る無料ツール</title>
+  <meta name="description" content="大学医局向けの当直・外勤表を、勤務帯や回復時間ルールで自動生成する無料Webツール。Excelダウンロード対応。">
+  <meta name="theme-color" content="#1e40af">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="当直表メーカー | 当直・外勤表を最速で作る">
+  <meta property="og:description" content="大学医局向けの当直・外勤表を、勤務帯や回復時間ルールで自動生成。Excelダウンロード対応。無料で使えます。">
+  <meta property="og:image" content="https://tochoku-maker.vercel.app/og-placeholder.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url" content="https://tochoku-maker.vercel.app/">
+  <meta property="og:locale" content="ja_JP">
+  <meta property="og:site_name" content="当直表メーカー">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="当直表メーカー">
+  <meta name="twitter:description" content="大学医局の当直・外勤表を最速で作る無料ツール">
+  <meta name="twitter:image" content="https://tochoku-maker.vercel.app/og-placeholder.png">
+
+  <!-- favicon (inline SVG) -->
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%233b82f6'/><stop offset='1' stop-color='%231e40af'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><text x='50%25' y='52%25' text-anchor='middle' dominant-baseline='middle' font-family='-apple-system,Hiragino Kaku Gothic ProN,sans-serif' font-weight='700' font-size='42' fill='white'>当</text></svg>">
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <!-- Clerk JS SDK (vanilla) - jsDelivr CDN 経由(CORS / メール難読化問題を回避) -->
+  <script
+    data-clerk-publishable-key="pk_test_bXV0dWFsLXZlcnZldC03NC5jbGVyay5hY2NvdW50cy5kZXYk"
+    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+  ></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== 認証ゲート(未ログイン時のフルスクリーン) ===== */
+    #auth-gate {
+      position: fixed; inset: 0; z-index: 10000;
+      background: linear-gradient(135deg,#f8fafc,#eef2ff);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #auth-gate.hidden { display: none; }
+    .auth-card {
+      background: #fff; border-radius: 16px;
+      box-shadow: 0 12px 48px rgba(15,23,42,.10), 0 1px 2px rgba(15,23,42,.04);
+      padding: 40px 36px; max-width: 440px; width: 100%;
+      text-align: center;
+    }
+    .auth-logo {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: linear-gradient(135deg,#3b82f6,#1e40af);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 28px;
+      margin: 0 auto 16px;
+      box-shadow: 0 4px 12px rgba(30,64,175,.25);
+    }
+    .auth-title { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px; letter-spacing: -.01em; }
+    .auth-sub   { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 24px; }
+    .auth-btn {
+      width: 100%; padding: 12px 16px; border: none; border-radius: 8px;
+      background: #2563eb; color: white; font-weight: 700; font-size: 14px;
+      cursor: pointer; transition: background .15s;
+      box-shadow: 0 1px 2px rgba(37,99,235,.2);
+    }
+    .auth-btn:hover { background: #1d4ed8; }
+    .auth-btn-guest {
+      width: 100%; padding: 10px 16px; margin-top: 10px;
+      border: 1px solid #cbd5e1; border-radius: 8px;
+      background: #fff; color: #475569;
+      font-weight: 600; font-size: 13px;
+      cursor: pointer; transition: background .15s, border-color .15s;
+    }
+    .auth-btn-guest:hover { background: #f8fafc; border-color: #94a3b8; color: #0f172a; }
+    .auth-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 14px 0 4px;
+      font-size: 11px; color: #94a3b8;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: ''; flex: 1; height: 1px; background: #e2e8f0;
+    }
+    .auth-foot { margin-top: 18px; font-size: 11px; color: #94a3b8; line-height: 1.5; }
+    .auth-foot a { color: #2563eb; text-decoration: none; }
+    .auth-foot a:hover { text-decoration: underline; }
+    .auth-loading {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #cbd5e1; border-top-color: #2563eb;
+      border-radius: 50%; animation: auth-spin .8s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+    @keyframes auth-spin { to { transform: rotate(360deg); } }
+
+    /* ===== ゲストモードバナー ===== */
+    #guest-banner {
+      display: none;
+      background: linear-gradient(90deg,#fef9c3,#fef3c7);
+      border-bottom: 1px solid #fde68a;
+      padding: 8px 16px; font-size: 12px; color: #78350f;
+      align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    #guest-banner.show { display: flex; }
+    #guest-banner .gb-msg { flex: 1; min-width: 200px; }
+    #guest-banner .gb-msg strong { color: #92400e; }
+    #guest-banner .gb-cta {
+      padding: 4px 12px; background: #2563eb; color: white;
+      border: none; border-radius: 6px; font-weight: 700; font-size: 12px;
+      cursor: pointer; white-space: nowrap;
+    }
+    #guest-banner .gb-cta:hover { background: #1d4ed8; }
+    #guest-banner .gb-close {
+      background: none; border: none; color: #92400e;
+      font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1;
+    }
+
+    /* ===== ログイン中ユーザーバッジ ===== */
+    #user-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: #475569; padding: 4px 10px;
+      background: #f1f5f9; border-radius: 999px; margin-left: 8px;
+      cursor: pointer;
+    }
+    #user-badge:hover { background: #e2e8f0; }
+    #user-badge .ub-avatar {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: linear-gradient(135deg,#3b82f6,#1e40af);
+      color: white; display: inline-flex; align-items: center;
+      justify-content: center; font-size: 10px; font-weight: 700;
+    }
+
+    /* ===== デザイントークン ===== */
+    :root {
+      --bg:        #f6f7fb;
+      --surface:   #ffffff;
+      --border:    #e5e7eb;
+      --border-strong: #cbd5e1;
+      --primary:   #2563eb;
+      --primary-hover: #1d4ed8;
+      --text:      #0f172a;
+      --muted:     #64748b;
+      --muted-2:   #94a3b8;
+      --success:   #059669;
+      --warning:   #d97706;
+      --danger:    #dc2626;
+      --shadow-sm: 0 1px 2px rgba(15,23,42,.04), 0 1px 3px rgba(15,23,42,.06);
+      --shadow-md: 0 4px 14px rgba(15,23,42,.06);
+      --radius:    8px;
+      --radius-sm: 6px;
+      --radius-lg: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter','Noto Sans JP','Hiragino Kaku Gothic ProN','Yu Gothic UI','Meiryo',sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.005em;
+      height: 100vh; display: flex; flex-direction: column;
+      background: var(--bg); color: var(--text); overflow: hidden;
+    }
+    h1,h2,h3,h4 { letter-spacing: -0.015em; font-weight: 700; }
+    input, select, textarea, button { font-family: inherit; }
+    /* フォーカス統一 */
+    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+      outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+      border-color: var(--primary);
+    }
+    /* 角丸・影の統一 */
+    .btn, .card, input[type=text], input[type=number], input[type=date], select, textarea {
+      border-radius: var(--radius-sm);
+    }
+
+    #title-bar {
+      background: #ffffff;
+      color: var(--text); padding: 10px 20px; font-size: 14px; font-weight: 700;
+      flex-shrink: 0; display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(15,23,42,.02);
+      letter-spacing: -.01em;
+    }
+    #title-bar .brand {
+      display: flex; align-items: center; gap: 10px;
+    }
+    #title-bar .brand-logo {
+      width: 26px; height: 26px; border-radius: 7px;
+      background: linear-gradient(135deg,#3b82f6,#1e40af);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 15px;
+      box-shadow: 0 2px 6px rgba(30,64,175,.25);
+    }
+    #title-bar .brand-name { font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+    #title-bar .brand-tag  { font-size: 10px; color: var(--muted); font-weight: 600; margin-left: 2px; letter-spacing: .02em; }
+    #title-bar .help-btn {
+      margin-left: auto;
+      background: var(--surface); color: var(--muted);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 4px 12px; font-size: 12px; cursor: pointer; font-weight: 600;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    #title-bar .help-btn:hover {
+      background: #f1f5f9; color: var(--text); border-color: var(--border-strong);
+    }
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ===== プレビュー ===== */
+    /* ===== ペイン(カード化) ===== */
+    #main { padding: 10px; gap: 10px; }
+    #preview-pane {
+      flex: 1; background: var(--surface); display: flex; flex-direction: column;
+      overflow: hidden; min-height: 100px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
+    #preview-header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 10px 16px; display: flex; align-items: center;
+      justify-content: space-between; flex-shrink: 0; gap: 8px;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+    #preview-header h2 {
+      font-size: 13px; font-weight: 700; color: var(--text);
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    #preview-header h2::before {
+      content: ''; display: inline-block; width: 3px; height: 14px;
+      border-radius: 2px; background: var(--primary);
+    }
+    #preview-header-right { display: flex; align-items: center; gap: 8px; }
+    .view-tabs { display: flex; gap: 3px; }
+    .tab-btn {
+      padding: 4px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface); cursor: pointer; font-size: 12px; color: var(--muted); font-weight: 600;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .tab-btn:hover { background: #f8fafc; color: var(--text); }
+    .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .upload-label {
+      display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      cursor: pointer; font-size: 12px; color: var(--text); font-weight: 500; white-space: nowrap;
+      transition: background .15s, border-color .15s;
+    }
+    .upload-label:hover { background: #f8fafc; border-color: var(--border-strong); }
+    #preview-body { flex: 1; overflow: auto; padding: 16px; }
+
+    /* ===== リサイザー ===== */
+    #resizer {
+      height: 8px; background: transparent; cursor: row-resize; flex-shrink: 0;
+      position: relative;
+    }
+    #resizer::before {
+      content: ''; position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 32px; height: 3px; border-radius: 2px;
+      background: var(--border-strong); transition: background .15s;
+    }
+    #resizer:hover::before, #resizer.dragging::before { background: var(--primary); }
+
+    /* ===== 操作画面 ===== */
+    #control-pane {
+      flex: 1; display: flex; flex-direction: column;
+      overflow: hidden; background: var(--surface); min-height: 100px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
+    #control-header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 10px 16px; flex-shrink: 0;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+    #control-header h2 {
+      font-size: 13px; font-weight: 700; color: var(--text);
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    #control-header h2::before {
+      content: ''; display: inline-block; width: 3px; height: 14px;
+      border-radius: 2px; background: var(--muted);
+    }
+    #control-body { flex: 1; overflow: auto; padding: 14px 16px; }
+    #control-inner { display: flex; gap: 12px; min-height: 100%; }
+    #control-main { flex: 1; min-width: 0; }
+    /* ===== 集計パネル (カード化) ===== */
+    #summary-panel {
+      width: 230px; flex-shrink: 0; font-size: 11px; overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 12px 12px 14px; box-shadow: var(--shadow-sm);
+      align-self: flex-start;
+    }
+    #summary-panel h3 {
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .08em;
+      margin-bottom: 10px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 6px;
+    }
+    #summary-panel h3::before {
+      content: ''; width: 3px; height: 12px; border-radius: 2px; background: var(--primary);
+      display: inline-block;
+    }
+    .summary-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .summary-table th {
+      background: transparent; font-size: 9.5px; padding: 4px 4px;
+      text-align: center; font-weight: 700; color: var(--muted);
+      letter-spacing: .03em; border-bottom: 1px solid var(--border);
+    }
+    .summary-table td {
+      padding: 4px 5px; text-align: center;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px; font-variant-numeric: tabular-nums;
+    }
+    .summary-table tbody tr:last-child td { border-bottom: none; }
+    .summary-table td:first-child {
+      text-align: left; max-width: 80px; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; font-weight: 500;
+    }
+    .summary-table tbody tr:hover td { background: #f8fafc; }
+
+    .ctrl-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .ctrl-block h3 {
+      font-size: 11px; font-weight: 700; color: #64748b;
+      text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px;
+    }
+
+    /* ===== グループ・担当者エリア ===== */
+    #groups-and-names { flex: 1; min-width: 320px; }
+    .group-add-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .group-add-row input {
+      flex: 1; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 13px;
+    }
+    .name-add-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .name-add-row input {
+      flex: 1; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 13px;
+    }
+    .name-add-row select {
+      padding: 5px 6px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12px; max-width: 120px;
+    }
+    .groups-list { display: flex; flex-direction: column; gap: 6px; }
+    .group-card { border: 1px solid #e2e8f0; border-radius: 7px; overflow: hidden; }
+    .group-card-header {
+      display: flex; align-items: center; gap: 6px; padding: 5px 8px;
+      color: white; font-size: 12px; font-weight: 700;
+    }
+    .group-card-header input[type=text] {
+      background: rgba(255,255,255,.25); border: 1px solid rgba(255,255,255,.4);
+      border-radius: 4px; color: white; font-size: 12px; font-weight: 700;
+      padding: 2px 6px; width: 100px;
+    }
+    .group-card-header input[type=text]::placeholder { color: rgba(255,255,255,.7); }
+    .group-card-header input[type=color] {
+      width: 26px; height: 26px; border: none; border-radius: 4px; cursor: pointer; padding: 0;
+      background: none;
+    }
+    .group-card-header .duty-label { font-size: 11px; font-weight: 400; white-space: nowrap; }
+    .group-card-header input[type=number] {
+      width: 46px; padding: 2px 4px; border-radius: 4px; border: 1px solid rgba(255,255,255,.4);
+      background: rgba(255,255,255,.25); color: white; font-size: 12px; font-weight: 700; text-align: center;
+    }
+    .group-card-header .del-group-btn {
+      margin-left: auto; background: rgba(0,0,0,.2); border: none; border-radius: 4px;
+      color: white; cursor: pointer; font-size: 12px; padding: 2px 7px;
+    }
+    .group-card-header .del-group-btn:hover { background: rgba(0,0,0,.4); }
+    .group-card-header .grp-order-btn {
+      background: rgba(255,255,255,.18); border: none; border-radius: 3px;
+      font-size: 9px; line-height: 1; padding: 1px 4px; height: 18px;
+    }
+    .group-card-header .grp-order-btn:not([disabled]):hover { background: rgba(255,255,255,.35); }
+    .group-drop-zone {
+      min-height: 34px; padding: 5px 6px; display: flex; flex-wrap: wrap; gap: 4px;
+      background: #fafafa; transition: background .15s;
+    }
+    .group-drop-zone.drag-over { background: #eff6ff; outline: 2px dashed #3b82f6; }
+    .name-tag {
+      display: flex; align-items: flex-start; gap: 4px; padding: 4px 8px;
+      border-radius: 16px; font-size: 12px; cursor: grab; user-select: none;
+      border: 1px solid rgba(0,0,0,.15); flex-direction: column; min-width: 60px;
+    }
+    .name-tag:active { cursor: grabbing; opacity: .7; }
+    .name-tag.dragging { opacity: .4; }
+    .name-tag.drop-before { box-shadow: -3px 0 0 0 #3b82f6; }
+    .name-tag.drop-after  { box-shadow:  3px 0 0 0 #3b82f6; }
+    .nt-top { display: flex; align-items: center; gap: 4px; width: 100%; }
+    .nt-name { font-weight: 700; white-space: nowrap; }
+    .nt-clinics { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px; }
+    .clinic-badge {
+      display: inline-flex; align-items: center; gap: 1px;
+      background: rgba(0,0,0,.12); border-radius: 8px;
+      font-size: 10px; padding: 1px 5px; font-weight: 600;
+    }
+    .clinic-badge .cbdel {
+      background: none; border: none; cursor: pointer; font-size: 10px;
+      padding: 0 1px; line-height: 1; opacity: .7;
+    }
+    .clinic-badge .cbdel:hover { opacity: 1; }
+    .name-tag .remove-btn {
+      background: none; border: none; cursor: pointer; color: #6b7280;
+      font-size: 12px; line-height: 1; padding: 0; margin-left: auto; flex-shrink: 0;
+    }
+    .name-tag .remove-btn:hover { color: #dc2626; }
+
+    /* ===== 日付設定 ===== */
+    .date-block { min-width: 280px; }
+    .date-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .date-row input[type=date] { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+    .legend { display: flex; gap: 10px; font-size: 11px; color: #64748b; margin-top: 8px; flex-wrap: wrap; }
+    .ld { width: 14px; height: 14px; border-radius: 2px; display: inline-block; border: 1px solid #aaa; vertical-align: middle; margin-right: 2px; }
+    .ld.sat { background: #daeef3; }
+    .ld.sun { background: #fde9d9; }
+    .ld.holiday { background: #fce4ec; }
+
+    /* ===== ボタン ===== */
+    /* ===== 入力欄統一 ===== */
+    input[type=text], input[type=number], input[type=date], select, textarea {
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border);
+      padding: 5px 9px; font-size: 13px; line-height: 1.4;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    input[type=text]:hover, input[type=number]:hover, input[type=date]:hover, select:hover, textarea:hover {
+      border-color: var(--border-strong);
+    }
+    input[type=text]:focus, input[type=number]:focus, input[type=date]:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+      outline: none;
+    }
+    input[type=text]:disabled, input[type=number]:disabled, input[type=date]:disabled, select:disabled {
+      background: #f8fafc; color: var(--muted); cursor: not-allowed;
+    }
+    /* セレクトのドロップ矢印を軽くカスタム */
+    select {
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%2364748b' d='M0 0h10L5 6z'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      padding-right: 22px;
+    }
+    input[type=number] { text-align: right; }
+    input[type=color] {
+      width: 22px; height: 22px; border: 1px solid var(--border);
+      border-radius: 5px; padding: 0; cursor: pointer; background: var(--surface);
+    }
+    input[type=radio], input[type=checkbox] { accent-color: var(--primary); cursor: pointer; }
+
+    /* ===== ボタン統一 ===== */
+    .btn {
+      padding: 6px 14px; border: 1px solid transparent; border-radius: var(--radius-sm);
+      cursor: pointer; font-size: 13px; font-weight: 600; line-height: 1.2;
+      transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .08s ease;
+      white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+      user-select: none;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { cursor: not-allowed; opacity: .45; }
+    .btn-primary   {
+      background: var(--primary); color: white; border-color: var(--primary);
+      box-shadow: 0 1px 2px rgba(37,99,235,.2);
+    }
+    .btn-primary:hover:not(:disabled)   { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-secondary {
+      background: #475569; color: white; border-color: #475569;
+      box-shadow: 0 1px 2px rgba(71,85,105,.2);
+    }
+    .btn-secondary:hover:not(:disabled) { background: #334155; border-color: #334155; }
+    .btn-success   {
+      background: var(--success); color: white; border-color: var(--success);
+      font-size: 14px; padding: 9px 22px;
+      box-shadow: 0 1px 2px rgba(5,150,105,.25);
+    }
+    .btn-success:hover:not(:disabled)   { background: #047857; border-color: #047857; }
+    .btn-outline   {
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); padding: 5px 12px; font-size: 12px;
+    }
+    .btn-outline:hover:not(:disabled)   {
+      background: #f8fafc; border-color: var(--border-strong); color: var(--text);
+    }
+    .btn-add-group {
+      background: var(--surface); border: 1px dashed var(--muted-2);
+      color: var(--muted); padding: 5px 14px; font-size: 12px; border-radius: var(--radius-sm);
+      cursor: pointer; font-weight: 600; transition: all .15s;
+    }
+    .btn-add-group:hover {
+      border-color: var(--primary); color: var(--primary); background: #eff6ff;
+      border-style: solid;
+    }
+    #preview-btn { display: none; }
+    /* ===== Excel出力プレビュー ===== */
+    .excel-preview {
+      border-collapse: collapse; font-size: 13px;
+      font-family: 'Inter','Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif;
+    }
+    .excel-preview th, .excel-preview td {
+      border: 1px solid #888; padding: 5px 10px;
+      text-align: center; white-space: nowrap; vertical-align: middle;
+    }
+    .excel-preview thead th { background: #f1f5f9; font-weight: 700; }
+    .excel-preview .ep-band { font-weight: 700; }
+    .excel-preview .ep-time { background: #fffde7; font-weight: 400; text-align: left; padding: 5px 10px; }
+    .excel-preview .ep-time-head { background: #fffde7; font-weight: 700; }
+    .excel-preview .ep-band-head { background: #f8fafc; font-weight: 700; }
+    .excel-preview .ep-date { font-weight: 700; }
+    #excel-view-toolbar {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 14px;
+      padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    }
+    #excel-view-toolbar .ep-hint {
+      color: var(--muted); font-size: 12px; margin-left: auto;
+    }
+
+    /* ===== 入力グリッド ===== */
+    .grid-section { margin-top: 14px; min-width: 0; }
+    .grid-section h3 { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
+    #grid-container { overflow-x: auto; }
+    .input-grid { border-collapse: separate; border-spacing: 0; border-top: 1px solid #aaa; border-left: 1px solid #aaa; font-size: 12px; }
+    .input-grid th {
+      border-right: 1px solid #aaa; border-bottom: 1px solid #aaa; padding: 4px 5px;
+      white-space: nowrap; font-weight: bold; background: #f1f5f9; font-size: 11px;
+      position: sticky; top: 0; z-index: 3; text-align: center;
+    }
+    .input-grid thead th:first-child { z-index: 4; }
+    .input-grid td { border-right: 1px solid #ccc; border-bottom: 1px solid #ccc; text-align: center; padding: 2px; }
+    .input-grid td.date-td {
+      font-weight: bold; padding: 3px 6px; background: #f8fafc;
+      min-width: 26px; position: sticky; left: 0; z-index: 2;
+    }
+    .input-grid tr.row-sat td { background: #daeef3; }
+    .input-grid tr.row-sun td { background: #fde9d9; }
+    .input-grid tr.row-sat td.date-td { background: #c8e6f0; }
+    .input-grid tr.row-sun td.date-td { background: #f9c9ac; }
+    .cell-btn {
+      width: 30px; height: 24px; border: 1px solid #bbb; border-radius: 3px; cursor: pointer;
+      font-size: 13px; font-weight: bold; background: rgba(255,255,255,.6);
+      display: flex; align-items: center; justify-content: center; margin: auto;
+    }
+    .cell-btn.maru  { background: #dcfce7; border-color: #22c55e; color: #15803d; }
+    .cell-btn.batsu { background: #fee2e2; border-color: #f87171; color: #dc2626; }
+
+    #action-bar {
+      background: white; border-top: 1px solid #e2e8f0; padding: 10px 16px;
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-shrink: 0;
+    }
+
+    /* ===== 当直表プレビュー ===== */
+    .roster-table {
+      border-collapse: separate; border-spacing: 0;
+      font-size: 11px;
+      font-family: inherit;
+    }
+    .roster-table th {
+      border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 6px 8px; text-align: center; font-weight: 700;
+      background: #f8fafc; white-space: nowrap;
+      position: sticky; top: 0; z-index: 3;
+      color: var(--muted);
+      font-size: 10.5px; letter-spacing: .03em;
+    }
+    .roster-table thead th:first-child { z-index: 4; border-left: 1px solid var(--border); }
+    .roster-table thead th { border-top: 1px solid var(--border); }
+    .roster-table th.th-clinic { min-width: 50px; cursor: grab; color: var(--text); letter-spacing: 0; }
+    .roster-table th.th-clinic:hover { background: #eff6ff; }
+    .roster-table th.th-clinic .th-del {
+      position: absolute; top: 2px; right: 2px; background: none; border: none;
+      cursor: pointer; color: var(--muted-2); font-size: 12px; padding: 0; width: 14px; height: 14px;
+      border-radius: 3px; line-height: 1;
+    }
+    .roster-table th.th-clinic .th-del:hover { color: var(--danger); background: rgba(220,38,38,.08); }
+    .roster-table td {
+      border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 4px 6px; text-align: center; white-space: nowrap; vertical-align: middle; font-size: 11.5px;
+      background: var(--surface);
+    }
+    .roster-table tbody tr:first-child td { border-top: 1px solid var(--border); }
+    .roster-table tbody td:first-child { border-left: 1px solid var(--border); }
+    .roster-table td.td-date { font-weight: 700; min-width: 26px; background: var(--surface); position: sticky; left: 0; z-index: 2; cursor: pointer; }
+    .roster-table tr.row-sat td { background: #eff6ff; }
+    .roster-table tr.row-sun td { background: #fef2f2; }
+    .roster-table tr.row-sat td.td-date { background: #dbeafe; color: #1e40af; }
+    .roster-table tr.row-sun td.td-date { background: #fecaca; color: #991b1b; }
+    .roster-table tr.row-holiday td { background: #fdf2f8; }
+    .roster-table tr.row-holiday td.td-date { background: #fbcfe8; color: #9d174d; }
+    .biko-row td { background: #fefce8 !important; }
+    .biko-row td:first-child { position: sticky; left: 0; z-index: 2; background: #fefce8 !important; color: var(--muted); letter-spacing: .02em; }
+    .biko-input {
+      width: 100%; border: 1px solid transparent; background: transparent; font-size: 11px;
+      font-family: inherit; outline: none; padding: 2px 4px; border-radius: 3px;
+      color: var(--text);
+    }
+    .biko-input:hover  { border-color: rgba(148,163,184,.5); background: white; }
+    .biko-input:focus  { border-color: var(--primary); background: white; box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+    .wd-sat { color: #0055cc; font-weight: bold; }
+    .wd-sun { color: #cc0000; font-weight: bold; }
+    .slot-btn {
+      width: 30px; height: 24px; border: 1px solid #bbb; border-radius: 3px; cursor: pointer;
+      font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: auto; padding: 0;
+    }
+    .slot-btn.slot-maru  { background: #dcfce7; border-color: #22c55e; color: #15803d; }
+    .slot-btn.slot-batsu { background: #fee2e2; border-color: #f87171; color: #dc2626; }
+    .slot-cell { cursor: pointer; user-select: none; font-size: 14px; font-weight: bold; }
+    .slot-cell.slot-maru  { background: #dcfce7 !important; color: #15803d; }
+    .slot-cell.slot-batsu { background: #fee2e2 !important; color: #dc2626; }
+    .colband-cell { cursor: pointer; user-select: none; font-size: 11px; font-weight: bold; text-align: center; }
+    .colband-cell.band-外来   { background: #dbeafe !important; color: #1d4ed8; }
+    .colband-cell.band-日直   { background: #fef9c3 !important; color: #a16207; }
+    .colband-cell.band-当直   { background: #ede9fe !important; color: #6d28d9; }
+    .colband-cell.band-日当直 { background: #ffedd5 !important; color: #9a3412; }
+    .drop-cell { cursor: copy; }
+    .drop-cell.drag-over-cell { background: #bfdbfe !important; outline: 2px dashed #3b82f6; }
+    .cell-unassigned { background: #fca5a5 !important; }
+    .cell-conflict   { background: #fca5a5 !important; outline: 2px solid #ef4444; }
+    .pre-assign-cell { min-width:50px; text-align:center; cursor:default; background:#f8fafc; }
+    .pre-assign-cell.pre-filled { background:#dbeafe; font-weight:bold; cursor:pointer; color:#1d4ed8; }
+    .pre-assign-cell.drag-over-cell { background:#bfdbfe !important; outline:2px dashed #3b82f6; }
+    .slot-cell.drag-over-cell { background:#bfdbfe !important; outline:2px dashed #3b82f6; }
+    .slot-cell.slot-preassign { background:#dbeafe !important; color:#1d4ed8; font-weight:bold; cursor:pointer; }
+    .roster-table th.th-clinic.col-drag-over { background: #bfdbfe !important; outline: 2px dashed #3b82f6; cursor: grabbing; }
+
+    .excel-table { border-collapse: collapse; font-size: 12px; }
+    .excel-table td, .excel-table th { border: 1px solid #e2e8f0; padding: 4px 10px; white-space: nowrap; }
+    .excel-table thead th { background: #f1f5f9; font-weight: 600; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+    /* ===== プロダクトツアー ===== */
+    #tour-overlay {
+      position: fixed; inset: 0; z-index: 9000; pointer-events: all;
+      background: rgba(0,0,0,.55);
+      transition: clip-path .35s cubic-bezier(.4,0,.2,1);
+    }
+    #tour-overlay.hidden { display: none; }
+    #tour-ring {
+      position: fixed; z-index: 9001; pointer-events: none;
+      border-radius: 8px; border: 2.5px solid #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,.25), 0 0 18px rgba(59,130,246,.35);
+      transition: all .35s cubic-bezier(.4,0,.2,1);
+    }
+    #tour-tooltip {
+      position: fixed; z-index: 9002;
+      background: white; border-radius: 12px;
+      width: 288px; padding: 0;
+      box-shadow: 0 12px 48px rgba(0,0,0,.28);
+      transition: top .35s cubic-bezier(.4,0,.2,1), left .35s cubic-bezier(.4,0,.2,1);
+    }
+    #tour-tooltip.hidden { display: none; }
+    .tour-close-x {
+      position: absolute; top: 6px; right: 8px; z-index: 2;
+      background: rgba(255,255,255,.18); color: white;
+      border: none; border-radius: 50%;
+      width: 24px; height: 24px; line-height: 20px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .tour-close-x:hover { background: rgba(255,255,255,.35); }
+    .tour-tt-head {
+      background: linear-gradient(135deg,#1e40af,#3b82f6);
+      border-radius: 12px 12px 0 0; padding: 12px 16px 10px; color: white;
+      position: relative;
+    }
+    .tour-tt-head .tour-counter {
+      font-size: 10px; opacity: .75; margin-bottom: 3px; font-weight: 600;
+    }
+    .tour-tt-head h3 { font-size: 13px; font-weight: 700; line-height: 1.4; }
+    .tour-tt-body { padding: 12px 16px 8px; }
+    .tour-tt-body p { font-size: 12px; color: #374151; line-height: 1.75; }
+    .tour-tt-tip {
+      margin-top: 8px; padding: 7px 10px;
+      background: #f0f9ff; border-left: 3px solid #38bdf8;
+      border-radius: 4px; font-size: 11px; color: #0369a1;
+    }
+    .tour-tt-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 16px 12px;
+    }
+    .tour-dots { display: flex; gap: 5px; }
+    .tour-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #e2e8f0; transition: background .2s;
+    }
+    .tour-dot.active { background: #3b82f6; }
+    .tour-dot.done   { background: #93c5fd; }
+    .tour-tt-btns { display: flex; gap: 6px; align-items: center; }
+    .tour-btn {
+      padding: 5px 14px; border-radius: 6px; border: none;
+      cursor: pointer; font-size: 11px; font-weight: 600;
+    }
+    .tour-btn-prev { background: #f1f5f9; color: #475569; }
+    .tour-btn-prev:hover { background: #e2e8f0; }
+    .tour-btn-next { background: #1d4ed8; color: white; min-width: 60px; }
+    .tour-btn-next:hover { background: #1e40af; }
+    .tour-btn-skip {
+      font-size: 10px; color: #94a3b8; background: none;
+      border: none; cursor: pointer; padding: 0;
+    }
+    .tour-btn-skip:hover { color: #64748b; text-decoration: underline; }
+    /* ツールチップの三角矢印 */
+    #tour-arrow {
+      position: fixed; z-index: 9003; pointer-events: none;
+      width: 0; height: 0; transition: all .35s cubic-bezier(.4,0,.2,1);
+    }
+    #tour-arrow.arr-top    { border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 10px solid white; }
+    #tour-arrow.arr-bottom { border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 10px solid white; }
+    #tour-arrow.arr-left   { border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-right: 10px solid white; }
+    #tour-arrow.arr-right  { border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 10px solid white; }
+    .tour-anim-wrap {
+      margin: 0; padding: 10px 14px; background: #f8fafc;
+      border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;
+      height: 130px; overflow: hidden;
+      display: flex; align-items: flex-start;
+    }
+    .t-anim { width: 100%; }
+
+    /* ===== 【無料プラン】Excel出力前の30秒広告モーダル ===== */
+    #ad-modal {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15, 23, 42, .72); align-items: center; justify-content: center;
+    }
+    #ad-modal.show { display: flex; }
+    #ad-modal-inner {
+      background: white; border-radius: 12px; width: 520px; max-width: 92vw;
+      box-shadow: 0 20px 50px rgba(0,0,0,.35); overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    #ad-modal-header {
+      padding: 10px 16px; font-size: 12px; color: #64748b;
+      background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    #ad-modal-header .left { font-weight: 700; color: #475569; }
+    #ad-modal-header .right { font-variant-numeric: tabular-nums; font-weight: 700; color: #3b82f6; }
+    #ad-modal-body {
+      height: 280px; background: #eff6ff;
+      display: flex; align-items: center; justify-content: center;
+      color: #475569; font-size: 13px; text-align: center; padding: 20px;
+    }
+    #ad-modal-body .ad-placeholder {
+      border: 2px dashed #94a3b8; border-radius: 10px; padding: 30px 40px;
+      color: #64748b; background: white; width: 100%;
+    }
+    #ad-modal-footer {
+      padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e2e8f0;
+      font-size: 11px; color: #94a3b8; text-align: center;
+    }
+    #ad-progress-wrap { height: 4px; background: #e2e8f0; overflow: hidden; }
+    #ad-progress { height: 100%; width: 0%; background: #3b82f6; transition: width .2s linear; }
+
+    /* ===== 当直セルの日直/当直分割 ===== */
+    .duty-split { display: flex; flex-direction: column; width: 100%; height: 100%; }
+    .duty-split .duty-sub {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: 3px; padding: 1px 4px; min-height: 18px; cursor: pointer;
+      position: relative;
+    }
+    .duty-split .duty-sub + .duty-sub { border-top: 1px dashed #94a3b8; }
+    .duty-split .sub-label {
+      font-size: 9px; color: #64748b; font-weight: 700;
+      background: rgba(148,163,184,.18); border-radius: 3px; padding: 0 3px;
+      flex-shrink: 0;
+    }
+    .duty-split .sub-value { font-weight: 600; }
+    td.duty-cell-split { padding: 0 !important; vertical-align: stretch; }
+    /* 分割サブセルの ○/✕ の着色 (非分割の .slot-cell と同配色) */
+    .duty-sub.slot-maru  { background: #dcfce7; color: #15803d; }
+    .duty-sub.slot-batsu { background: #fee2e2; color: #dc2626; }
+    .duty-sub.pre-filled { background: #dbeafe; color: #1d4ed8; }
+
+    /* ===== 列ヘッダー文字編集 (当直/オンコール/外勤先) ===== */
+    .col-header-input {
+      background: transparent; border: 1px solid transparent;
+      font: inherit; color: inherit; text-align: center;
+      min-width: 32px; padding: 1px 3px;
+      border-radius: 3px; box-sizing: content-box;
+      /* width は size 属性で駆動 (JS側で入力に応じて更新) */
+    }
+    .col-header-input:hover  { border-color: rgba(148,163,184,.6); background: white; }
+    .col-header-input:focus  { border-color: #3b82f6; background: white; outline: none; }
+
+    /* ===== 勤務日(第N曜日)ポップアップ ===== */
+    #work-days-popup {
+      display: none; position: absolute; z-index: 1000;
+      background: white; border: 1px solid #cbd5e1; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      padding: 10px 12px; font-size: 12px;
+    }
+    #work-days-popup.show { display: block; }
+    #work-days-popup .wdp-header {
+      font-weight: 700; color: #475569; margin-bottom: 8px;
+      padding-bottom: 6px; border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    #work-days-popup .wdp-close {
+      background: none; border: none; cursor: pointer; color: #94a3b8;
+      font-size: 16px; line-height: 1; padding: 0 4px;
+    }
+    #work-days-popup .wdp-close:hover { color: #dc2626; }
+    #work-days-popup table { border-collapse: collapse; }
+    #work-days-popup th, #work-days-popup td {
+      padding: 3px 6px; text-align: center; font-size: 11px;
+    }
+    #work-days-popup th { color: #64748b; font-weight: 600; }
+    #work-days-popup th.wdp-sat { color: #2563eb; }
+    #work-days-popup th.wdp-sun { color: #dc2626; }
+    #work-days-popup th.wdp-head-clickable { cursor: pointer; }
+    #work-days-popup th.wdp-head-clickable:hover { background: #f1f5f9; border-radius: 4px; }
+    #work-days-popup td { cursor: pointer; user-select: none; border-radius: 4px; padding: 4px 8px; }
+    #work-days-popup td:hover { background: #f1f5f9; }
+    #work-days-popup .wdp-box {
+      display: inline-block; width: 14px; height: 14px; vertical-align: middle;
+      border: 1.5px solid #94a3b8; border-radius: 3px; background: white;
+      position: relative; box-sizing: border-box;
+    }
+    #work-days-popup td.on .wdp-box { background: #15803d; border-color: #15803d; }
+    #work-days-popup td.on .wdp-box::after {
+      content: ''; position: absolute; left: 3px; top: 0px;
+      width: 4px; height: 8px;
+      border-right: 2px solid white; border-bottom: 2px solid white;
+      transform: rotate(45deg);
+    }
+    /* 当直/オンコール用: 毎日/隔日/偶数日/奇数日 ラジオ型リスト */
+    #work-days-popup .wdp-mode-list {
+      display: flex; flex-direction: column; gap: 2px; min-width: 160px;
+    }
+    #work-days-popup .wdp-mode-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 8px; cursor: pointer; border-radius: 4px; user-select: none;
+    }
+    #work-days-popup .wdp-mode-item:hover { background: #f1f5f9; }
+    #work-days-popup .wdp-mode-item.on .wdp-box { background: #15803d; border-color: #15803d; }
+    #work-days-popup .wdp-mode-item.on .wdp-box::after {
+      content: ''; position: absolute; left: 3px; top: 0px;
+      width: 4px; height: 8px;
+      border-right: 2px solid white; border-bottom: 2px solid white;
+      transform: rotate(45deg);
+    }
+
+    /* ===== 担当者クリック → 外勤先割当ポップアップ ===== */
+    .name-tag .nt-name { cursor: pointer; }
+    .name-tag .nt-name:hover { text-decoration: underline; }
+    #name-clinics-popup {
+      display: none; position: absolute; z-index: 1000;
+      background: white; border: 1px solid #cbd5e1; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      min-width: 220px; max-width: 320px; padding: 10px 12px;
+      font-size: 12px;
+    }
+    #name-clinics-popup.show { display: block; }
+    #name-clinics-popup .ncp-header {
+      font-weight: 700; font-size: 12px; color: #475569;
+      margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    #name-clinics-popup .ncp-close {
+      background: none; border: none; cursor: pointer; color: #94a3b8;
+      font-size: 16px; line-height: 1; padding: 0 4px;
+    }
+    #name-clinics-popup .ncp-close:hover { color: #dc2626; }
+    #name-clinics-popup .ncp-list {
+      display: flex; flex-direction: column; gap: 2px;
+      overflow-y: auto; /* max-height は JS 側で画面に合わせて動的設定 */
+    }
+    #name-clinics-popup label.ncp-item {
+      display: flex; align-items: center; gap: 8px; cursor: pointer;
+      padding: 5px 6px; border-radius: 5px; user-select: none;
+    }
+    #name-clinics-popup label.ncp-item:hover { background: #f1f5f9; }
+    #name-clinics-popup label.ncp-item input[type=checkbox] {
+      cursor: pointer; accent-color: #3b82f6;
+    }
+    #name-clinics-popup .ncp-empty {
+      color: #94a3b8; font-size: 11px; padding: 12px 4px; text-align: center; line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== 認証ゲート(未ログイン時にフルスクリーン表示) ===== -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div class="auth-logo" aria-hidden="true">当</div>
+    <div class="auth-title">当直表メーカー</div>
+    <div class="auth-sub">
+      <span id="auth-loading-text">
+        <span class="auth-loading"></span>読み込み中…
+      </span>
+      <span id="auth-prompt-text" style="display:none;">
+        無料会員登録(Googleアカウント)で<br>
+        当直表のデータが安全に保存されます。
+      </span>
+    </div>
+    <div id="auth-buttons" style="display:none;">
+      <button id="auth-signin-btn" class="auth-btn" onclick="openSignIn()">
+        Googleでログイン / 会員登録
+      </button>
+      <div class="auth-divider">または</div>
+      <button class="auth-btn-guest" onclick="continueAsGuest()">
+        登録なしで試してみる
+      </button>
+    </div>
+    <div class="auth-foot">
+      ご利用には <a href="/terms" target="_blank">利用規約</a> および
+      <a href="/privacy" target="_blank">プライバシーポリシー</a> への同意が必要です。<br>
+      ※ 登録なしの場合、データはこのブラウザにのみ保存されます。
+    </div>
+  </div>
+</div>
+
+<!-- ===== プロダクトツアー ===== -->
+<div id="tour-overlay" class="hidden"></div>
+<div id="tour-ring" style="display:none;"></div>
+<div id="tour-tooltip" class="hidden"></div>
+<div id="tour-arrow"></div>
+<div id="title-bar">
+  <div class="brand">
+    <div class="brand-logo" aria-hidden="true">当</div>
+    <div>
+      <span class="brand-name">当直表メーカー</span>
+      <span class="brand-tag">beta</span>
+    </div>
+  </div>
+  <span id="user-badge" style="display:none;" onclick="openUserMenu()" title="アカウント">
+    <span class="ub-avatar" id="ub-avatar">?</span>
+    <span id="ub-name">…</span>
+  </span>
+  <button class="help-btn" onclick="openTour()" title="使い方を見る">? 使い方</button>
+</div>
+
+<!-- ゲストモード時のお知らせバナー -->
+<div id="guest-banner">
+  <span class="gb-msg">
+    <strong>お試し中</strong>:データはこのブラウザにのみ保存されます。会員登録すると別の端末でも見られます。
+  </span>
+  <button class="gb-cta" onclick="openSignIn()">会員登録</button>
+  <button class="gb-close" onclick="hideGuestBanner()" title="閉じる">×</button>
+</div>
+<div id="main">
+
+  <!-- 上部: 出来上がり図 -->
+  <div id="preview-pane">
+    <div id="preview-header">
+      <h2>📋 出来上がり図</h2>
+      <div id="preview-header-right">
+        <button class="btn btn-outline" id="undo-btn" onclick="doUndo()" title="直前の操作を1つだけ戻す (Ctrl+Z)" disabled style="opacity:.4;cursor:not-allowed;">↶ 戻る</button>
+        <button class="btn btn-outline" id="preview-btn" onclick="openExcelPreview()">📄 プレビュー</button>
+      </div>
+    </div>
+    <div id="preview-body">
+      <div id="roster-view"></div>
+      <div id="excel-view" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="resizer"></div>
+
+  <!-- 下部: 操作画面 -->
+  <div id="control-pane">
+    <div id="control-header"><h2>⚙️ 操作画面</h2></div>
+    <div id="control-body">
+    <div id="control-inner">
+    <div id="control-main">
+      <div class="ctrl-row">
+
+        <!-- グループ・担当者 -->
+        <div id="groups-and-names" class="ctrl-block">
+          <h3>グループ・担当者</h3>
+          <!-- 担当者追加 -->
+          <div class="name-add-row">
+            <input type="text" id="name-input" placeholder="名前を入力（Enterで追加）"
+              onkeydown="if(event.key==='Enter' && !event.isComposing && event.keyCode!==229){addName();event.preventDefault();}">
+            <select id="name-group-select"></select>
+            <button class="btn btn-primary" onclick="addName()">追加</button>
+          </div>
+          <!-- グループ一覧 -->
+          <div id="groups-list"></div>
+          <div style="margin-top:8px;">
+            <button class="btn btn-add-group" onclick="addGroup()">＋ グループを追加</button>
+          </div>
+        </div>
+
+        <!-- 日付 -->
+        <div class="ctrl-block date-block">
+          <h3>日付範囲</h3>
+          <div class="date-row">
+            <input type="date" id="start-date" onchange="syncEndDate()">
+            <span style="color:#94a3b8;font-weight:bold;">〜</span>
+            <input type="date" id="end-date">
+            <button class="btn btn-secondary" onclick="buildGrid()">グリッドを更新</button>
+          </div>
+          <div class="date-row" style="margin-top:6px;">
+            <span style="font-size:12px;color:#475569;font-weight:500;">追加列:</span>
+            <button class="btn btn-outline" id="add-oncall-btn" onclick="addOnCall()" title="当直の横にオンコール列を追加 (最大3列)。追加後に名前を「副直」等に変更可">
+              ＋ オンコールを追加 <span id="oncall-count" style="color:#94a3b8;margin-left:4px;">(0/3)</span>
+            </button>
+          </div>
+          <div class="legend">
+            <span><span class="ld sat"></span>土曜</span>
+            <span><span class="ld sun"></span>日曜</span>
+            <span><span class="ld holiday"></span>祝日（日付クリックで切替）</span>
+            <span style="color:#888;">※勤務有無</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 入力グリッド -->
+      <div class="grid-section">
+        <h3>勤務チェック <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#94a3b8;font-size:10px;">クリック: ○↔✕切替　名前クリック: 全切替</span></h3>
+        <div id="grid-container">
+          <div style="color:#94a3b8;font-size:13px;padding:12px;">担当者と日付を設定して「グリッドを更新」を押してください</div>
+        </div>
+      </div>
+    </div>
+    <div id="summary-panel"><div style="color:#94a3b8;font-size:11px;padding-top:4px;">「作る」を押すと<br>集計が表示されます</div></div>
+    </div>
+    </div>
+    <div id="action-bar">
+
+      <button class="btn btn-success" onclick="generateRoster()">✅ 作る</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WD = ['日','月','火','水','木','金','土'];
+// localStorage は廃止。データは Clerk認証 + Neon Postgres で保存。
+// チュートリアル既読フラグだけブラウザ側で持つ(ユーザーごとのデータではないため)
+const STORAGE_TUTORIAL = 'tochoku_g_tutorial_done';
+
+// ===== State =====
+let groups = [
+  { id: 'g1', label: 'グループ1', color: '#3b82f6', maxDutyWD: 0, maxDutyWE: 0, maxOnCall: {} }
+];
+let names      = [];
+let nameGroups = {};     // name -> group id
+let nameOutsides = {};   // name -> [colLabel, ...]
+
+let COLS = [
+  { label: '当直', allDays: true }  // 1列目: 当直（全日程）
+];
+let currentDates = [];
+let gridData  = {};
+let slotData  = {};
+let dutyOpen  = {};  // date -> '○' or '✕'  当直あり/なし
+let bikoData  = {};
+let gakkaiData = {};
+let storedRoster = null;
+let holidayDates = {};  // date string -> true
+let holidayCache = {}; // year -> { dateStr: holidayName, ... }
+let colBand = {};       // COLS index -> band string
+
+// Drag state
+let draggedName   = null;
+let draggedColIdx = null;   // 列並び替えドラッグ中のci (COLS.slice(1)インデックス)
+let dragSourceCell = null;  // セルからドラッグ中の場合: { d, type, ci }
+let preAssigned = {};       // 事前割り当て: date -> { duty, nichoku, waiting, clinic_0, clinic_1, ... }
+let splitDays = {};         // 分割済みセル: date -> { duty?: true, clinic_0?: true, ... }
+let dutyOpenNichoku = {};   // 当直分割時、日直側の ○/✕: date -> '○' | '✕' (未設定は ○扱い)
+let slotDataNichoku = {};   // オンコール分割時、日直側の ○/✕: date -> { ci -> '○' | '✕' }
+let recoveryData = {};      // 回復時間(h): 列ラベル -> number。未設定は 勤務帯のデフォルトを使用
+let workPatterns = {};      // 勤務日ルール(外勤用): 列ラベル -> [{ nth: 1..5, w: 0..6 }, ...]
+let dayModes = {};          // 勤務日モード(当直/オンコール用): 列ラベル -> 'every'|'alternate'|'even'|'odd'
+
+// ===== Utility =====
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escQ(s) {
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+function shuffle(arr) {
+  for (let i = arr.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+function getDatesInRange(start, end) {
+  const dates = [], cur = new Date(start+'T00:00:00'), last = new Date(end+'T00:00:00');
+  while (cur <= last) {
+    const y = cur.getFullYear(), m = String(cur.getMonth()+1).padStart(2,'0'), d = String(cur.getDate()).padStart(2,'0');
+    dates.push(`${y}-${m}-${d}`);
+    cur.setDate(cur.getDate()+1);
+  }
+  return dates;
+}
+function getGroupById(id) {
+  return groups.find(g => g.id === id) || groups[0] || null;
+}
+function getGroupColor(name) {
+  const g = getGroupById(nameGroups[name]);
+  return g ? g.color : '#64748b';
+}
+function getGroupTextColor(hexBg) {
+  const r = parseInt(hexBg.slice(1,3),16);
+  const g = parseInt(hexBg.slice(3,5),16);
+  const b = parseInt(hexBg.slice(5,7),16);
+  return (r*0.299+g*0.587+b*0.114) > 140 ? '#1e293b' : '#ffffff';
+}
+
+// ===== Group Management =====
+let gidSeq = 2;
+function addGroup() {
+  const id = 'g' + (gidSeq++);
+  const colors = ['#ef4444','#f97316','#22c55e','#8b5cf6','#ec4899','#14b8a6'];
+  const color = colors[groups.length % colors.length];
+  groups.push({ id, label: 'グループ' + groups.length, color, maxDutyWD: 0, maxDutyWE: 0, maxOnCall: {} });
+  saveNames();
+  renderGroupsAndNames();
+  updateGroupSelect();
+}
+
+function deleteGroup(id) {
+  if (groups.length <= 1) { alert('グループは1つ以上必要です'); return; }
+  const fallback = groups.find(g => g.id !== id);
+  if (!confirm('このグループを削除しますか？メンバーは「' + (fallback ? fallback.label : '') + '」に移動します')) return;
+  groups = groups.filter(g => g.id !== id);
+  names.forEach(n => { if (nameGroups[n] === id) nameGroups[n] = groups[0].id; });
+  saveNames();
+  renderGroupsAndNames();
+  updateGroupSelect();
+}
+
+function updateGroupLabel(id, label) {
+  const g = groups.find(g => g.id === id);
+  if (g) { g.label = label; saveNames(); updateGroupSelect(); renderGroupsAndNames(); }
+}
+
+function updateGroupColor(id, color) {
+  const g = groups.find(g => g.id === id);
+  if (g) { g.color = color; saveNames(); renderGroupsAndNames(); }
+}
+
+function updateGroupMaxDutyWD(id, val) {
+  const g = groups.find(g => g.id === id);
+  if (g) { g.maxDutyWD = Math.max(0, parseInt(val)||0); saveNames(); }
+}
+function updateGroupMaxDutyWE(id, val) {
+  const g = groups.find(g => g.id === id);
+  if (g) { g.maxDutyWE = Math.max(0, parseInt(val)||0); saveNames(); }
+}
+
+// グループ並び替え (上下)
+function moveGroupUp(id) {
+  const i = groups.findIndex(g => g.id === id);
+  if (i <= 0) return;
+  [groups[i-1], groups[i]] = [groups[i], groups[i-1]];
+  saveNames(); renderGroupsAndNames(); renderGrid();
+  if (storedRoster) renderRosterFromStored(); else renderPreviewEditable();
+}
+function moveGroupDown(id) {
+  const i = groups.findIndex(g => g.id === id);
+  if (i < 0 || i >= groups.length - 1) return;
+  [groups[i+1], groups[i]] = [groups[i], groups[i+1]];
+  saveNames(); renderGroupsAndNames(); renderGrid();
+  if (storedRoster) renderRosterFromStored(); else renderPreviewEditable();
+}
+
+// グループ毎のオンコール回数上限 (idx は 1-based)
+function updateGroupMaxOnCall(id, idx, val) {
+  const g = groups.find(g => g.id === id);
+  if (!g) return;
+  if (!g.maxOnCall) g.maxOnCall = {};
+  g.maxOnCall[idx] = Math.max(0, parseInt(val)||0);
+  saveNames();
+}
+
+// 待機モードは廃止済み (互換のため関数本体を no-op 化)
+function setTaikiMode() {}
+
+function updateGroupSelect() {
+  const sel = document.getElementById('name-group-select');
+  if (!sel) return;
+  sel.innerHTML = groups.map(g => `<option value="${g.id}">${esc(g.label)}</option>`).join('');
+}
+
+// ===== Name Management =====
+// saveNames / loadNames はクラウド統一版を後方で定義しているのでここでは何もしない
+// (旧 localStorage 直書き版は廃止)
+
+function addName() {
+  const inp = document.getElementById('name-input');
+  const sel = document.getElementById('name-group-select');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (names.includes(name)) { inp.select(); return; }
+  names.push(name);
+  nameGroups[name] = sel ? sel.value : (groups[0] ? groups[0].id : 'g1');
+  nameOutsides[name] = [];
+  gridData[name] = {};
+  currentDates.forEach(d => { gridData[name][d] = '○'; });
+  saveNames(); renderGroupsAndNames();
+  renderGrid(); // 日付未設定でも名前行を表示
+  setTimeout(() => { inp.value = ''; inp.focus(); }, 0);
+}
+
+function removeName(name) {
+  names = names.filter(n => n !== name);
+  delete nameGroups[name]; delete nameOutsides[name]; delete gridData[name];
+  saveNames(); renderGroupsAndNames();
+  renderGrid(); // 日付未設定でも最新の名前行一覧を反映
+}
+
+function addClinicToName(name, clinicLabel) {
+  if (!nameOutsides[name]) nameOutsides[name] = [];
+  if (!nameOutsides[name].includes(clinicLabel)) {
+    nameOutsides[name].push(clinicLabel);
+    saveNames(); renderGroupsAndNames();
+    renderNameClinicsPopupContent(); // ポップアップが開いていれば再描画
+  }
+}
+
+function removeClinicFromName(name, clinicLabel) {
+  if (!nameOutsides[name]) return;
+  nameOutsides[name] = nameOutsides[name].filter(c => c !== clinicLabel);
+  saveNames(); renderGroupsAndNames();
+  renderNameClinicsPopupContent(); // ポップアップが開いていれば再描画
+}
+
+// ===== 担当者クリック → 外勤先割当ポップアップ =====
+let currentPopupName = null;
+
+function openNameClinicsPopup(name, anchorEl) {
+  currentPopupName = name;
+  const popup = document.getElementById('name-clinics-popup');
+  const list  = document.getElementById('ncp-list');
+  if (!popup || !list) return;
+
+  // 一旦画面外に置いて show、サイズを測定可能にしてから位置決め
+  popup.style.visibility = 'hidden';
+  popup.style.left = '-9999px';
+  popup.style.top  = '0px';
+  list.style.maxHeight = ''; // リセットしてコンテンツの素の高さを計測できるように
+  popup.classList.add('show');
+  renderNameClinicsPopupContent();
+
+  const margin = 8, gap = 6;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const rect = anchorEl.getBoundingClientRect();
+  const popupW = Math.min(320, Math.max(popup.offsetWidth, 220));
+
+  // --- 水平方向: 画面内にクランプ ---
+  let left = rect.left;
+  if (left + popupW > vw - margin) left = vw - popupW - margin;
+  if (left < margin) left = margin;
+
+  // --- 垂直方向: 下に出すか上に出すか、余白が小さい方はリストをスクロール化 ---
+  const spaceBelow = vh - rect.bottom - gap - margin;
+  const spaceAbove = rect.top - gap - margin;
+  // ヘッダー＋パディングの非リスト部分の高さ(リセット済みで算出可能)
+  const nonListH = popup.offsetHeight - list.offsetHeight;
+
+  let top, availH;
+  if (spaceBelow >= 140 || spaceBelow >= spaceAbove) {
+    // 下に開く
+    availH = Math.max(100, spaceBelow);
+    const listMax = Math.max(60, availH - nonListH);
+    list.style.maxHeight = listMax + 'px';
+    top = rect.bottom + gap;
+  } else {
+    // 上に開く
+    availH = Math.max(100, spaceAbove);
+    const listMax = Math.max(60, availH - nonListH);
+    list.style.maxHeight = listMax + 'px';
+    // サイズが変わる可能性があるので再計測
+    top = rect.top - gap - popup.offsetHeight;
+    if (top < margin) top = margin;
+  }
+
+  popup.style.left = (left + window.scrollX) + 'px';
+  popup.style.top  = (top  + window.scrollY) + 'px';
+  popup.style.visibility = 'visible';
+}
+
+function renderNameClinicsPopupContent() {
+  const popup = document.getElementById('name-clinics-popup');
+  if (!popup || !popup.classList.contains('show')) return;
+  if (!currentPopupName) return;
+  const name = currentPopupName;
+  document.getElementById('ncp-title').textContent = `${name} の外勤先`;
+  const list = document.getElementById('ncp-list');
+  // 当直(先頭)・副直・オンコール列は外勤先ではないので除外
+  const clinicCols = COLS.slice(1).filter(c => !c.isOnCall && !c.isSubduty);
+  if (!clinicCols.length) {
+    list.innerHTML = '<div class="ncp-empty">外勤先がまだ登録されていません<br>(プレビュー上部の「＋」ボタンから追加できます)</div>';
+    return;
+  }
+  const assigned = nameOutsides[name] || [];
+  list.innerHTML = clinicCols.map(col => {
+    const lab = col.label;
+    const checked = assigned.includes(lab) ? 'checked' : '';
+    return `<label class="ncp-item">
+      <input type="checkbox" ${checked}
+        onchange="toggleClinicForName('${escQ(name)}','${escQ(lab)}',this.checked)">
+      <span>${esc(lab)}</span>
+    </label>`;
+  }).join('');
+}
+
+function closeNameClinicsPopup() {
+  currentPopupName = null;
+  const popup = document.getElementById('name-clinics-popup');
+  if (popup) popup.classList.remove('show');
+}
+
+function toggleClinicForName(name, clinicLabel, checked) {
+  if (checked) addClinicToName(name, clinicLabel);
+  else         removeClinicFromName(name, clinicLabel);
+}
+
+// ===== Render Groups & Names =====
+function renderGroupsAndNames() {
+  const el = document.getElementById('groups-list');
+  if (!groups.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = '<div class="groups-list">' + groups.map(gc => {
+    const members = names.filter(n => (nameGroups[n] || groups[0].id) === gc.id);
+    const tc = getGroupTextColor(gc.color);
+    // 外勤バッジを Excel(COLS) と同じ並びで表示するための順序マップ
+    const clinicOrder = {};
+    COLS.slice(1).forEach((c, i) => { clinicOrder[c.label] = i; });
+    const tags = members.map(name => {
+      const sortedClinics = (nameOutsides[name]||[])
+        .slice()
+        .sort((a, b) => (clinicOrder[a] ?? 999) - (clinicOrder[b] ?? 999));
+      // ×ボタンは廃止。外勤先の解除は名前クリックで開くポップアップから行う。
+      const clinicBadges = sortedClinics.map(cl =>
+        `<span class="clinic-badge">${esc(cl)}</span>`
+      ).join('');
+      const bgLight = gc.color + '22';
+      return `<div class="name-tag" data-name="${esc(name)}" draggable="true"
+          style="background:${bgLight};border-color:${gc.color};color:#1e293b;"
+          onclick="openNameClinicsPopup('${escQ(name)}', this)"
+          title="クリックで外勤先を割当"
+          ondragstart="onDragStartName(event,'${escQ(name)}')"
+          ondragend="onDragEndName(event)"
+          ondragover="onDragOverNameTag(event)"
+          ondrop="onDropOnNameTag(event,'${gc.id}','${escQ(name)}')"
+          ondragleave="onDragLeaveNameTag(event)">
+        <div class="nt-top">
+          <span class="nt-name">${esc(name)}</span>
+          <button class="remove-btn" onclick="event.stopPropagation();removeName('${escQ(name)}')" title="削除">×</button>
+        </div>
+        ${clinicBadges ? '<div class="nt-clinics">'+clinicBadges+'</div>' : ''}
+      </div>`;
+    }).join('');
+
+    // 副直列 + オンコール列 の入力欄を生成
+    const subDutyCols = COLS.filter(c => c.isSubduty);
+    const subDutyInputs = subDutyCols.map((col, idx) => {
+      const n = idx + 1;
+      const val = (gc.maxSubDuty && gc.maxSubDuty[n] != null) ? gc.maxSubDuty[n] : 0;
+      return `<span class="duty-label">${esc(col.label)}:</span>
+        <input type="number" value="${val}" min="0" max="99"
+          onchange="updateGroupMaxSubDuty('${gc.id}',${n},this.value)" title="${esc(col.label)}目標回数" style="color:${tc};">
+        <span class="duty-label">回</span>`;
+    }).join('');
+    const onCallCols = COLS.filter(c => c.isOnCall);
+    const onCallInputs = onCallCols.map((col, idx) => {
+      const n = idx + 1;
+      const val = (gc.maxOnCall && gc.maxOnCall[n] != null) ? gc.maxOnCall[n] : 0;
+      return `<span class="duty-label">${esc(col.label)}:</span>
+        <input type="number" value="${val}" min="0" max="99"
+          onchange="updateGroupMaxOnCall('${gc.id}',${n},this.value)" title="${esc(col.label)}目標回数" style="color:${tc};">
+        <span class="duty-label">回</span>`;
+    }).join('');
+
+    const gIdx = groups.findIndex(g2 => g2.id === gc.id);
+    const canUp = gIdx > 0;
+    const canDown = gIdx < groups.length - 1;
+    return `<div class="group-card">
+      <div class="group-card-header" style="background:${gc.color};color:${tc};">
+        <input type="color" value="${gc.color}" onchange="updateGroupColor('${gc.id}',this.value)" title="カラー変更">
+        <button class="grp-order-btn" onclick="moveGroupUp('${gc.id}')" ${canUp?'':'disabled'} title="上へ" style="color:${tc};opacity:${canUp?'1':'.35'};cursor:${canUp?'pointer':'not-allowed'};">▲</button>
+        <button class="grp-order-btn" onclick="moveGroupDown('${gc.id}')" ${canDown?'':'disabled'} title="下へ" style="color:${tc};opacity:${canDown?'1':'.35'};cursor:${canDown?'pointer':'not-allowed'};">▼</button>
+        <input type="text" value="${esc(gc.label)}" onchange="updateGroupLabel('${gc.id}',this.value)" onblur="updateGroupLabel('${gc.id}',this.value)" style="color:${tc};" placeholder="グループ名">
+        <span class="duty-label">平日当直:</span>
+        <input type="number" value="${gc.maxDutyWD??0}" min="0" max="99"
+          onchange="updateGroupMaxDutyWD('${gc.id}',this.value)" title="平日当直目標回数" style="color:${tc};">
+        <span class="duty-label">回</span>
+        <span class="duty-label">土日祝:</span>
+        <input type="number" value="${gc.maxDutyWE??0}" min="0" max="99"
+          onchange="updateGroupMaxDutyWE('${gc.id}',this.value)" title="土日祝当直目標回数" style="color:${tc};">
+        <span class="duty-label">回</span>
+        ${subDutyInputs}
+        ${onCallInputs}
+        <button class="del-group-btn" onclick="deleteGroup('${gc.id}')">削除</button>
+      </div>
+      <div class="group-drop-zone" data-gid="${gc.id}"
+        ondragover="onDragOverZone(event)"
+        ondragleave="onDragLeaveZone(event)"
+        ondrop="onDropOnZone(event,'${gc.id}')">
+        ${tags || '<span style="font-size:11px;color:#94a3b8;padding:2px 4px;">（ここにドロップ）</span>'}
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ===== Drag: Name reorder / Group move =====
+function onDragStartName(e, name) {
+  draggedName = name; draggedClinic = null;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => {
+    const el = document.querySelector(`.name-tag[data-name="${esc(name)}"]`);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+function onDragEndName(e) {
+  e.currentTarget.classList.remove('dragging');
+  clearNameDropIndicators();
+  document.querySelectorAll('.group-drop-zone').forEach(el => el.classList.remove('drag-over'));
+}
+function clearNameDropIndicators() {
+  document.querySelectorAll('.name-tag.drop-before,.name-tag.drop-after').forEach(el => el.classList.remove('drop-before','drop-after'));
+}
+function onDragOverNameTag(e) {
+  e.preventDefault(); e.stopPropagation();
+  // Name reorder のみ
+  clearNameDropIndicators();
+  const tag = e.currentTarget, rect = tag.getBoundingClientRect();
+  tag.classList.add((e.clientX - rect.left) < rect.width/2 ? 'drop-before' : 'drop-after');
+}
+function onDragLeaveNameTag(e) {
+  e.currentTarget.classList.remove('drop-before','drop-after');
+}
+function onDropOnNameTag(e, groupId, targetName) {
+  e.preventDefault(); e.stopPropagation();
+  clearNameDropIndicators();
+  document.querySelectorAll('.group-drop-zone').forEach(el => el.classList.remove('drag-over'));
+
+  // Name reorder のみ
+  if (!draggedName || draggedName === targetName) { draggedName = null; return; }
+  const rect = e.currentTarget.getBoundingClientRect();
+  const before = (e.clientX - rect.left) < rect.width/2;
+  const fromIdx = names.indexOf(draggedName);
+  names.splice(fromIdx, 1);
+  nameGroups[draggedName] = groupId;
+  let toIdx = names.indexOf(targetName);
+  if (!before) toIdx++;
+  names.splice(toIdx, 0, draggedName);
+  draggedName = null;
+  saveNames(); renderGroupsAndNames(); renderGrid();
+}
+function onDragOverZone(e) {
+  e.preventDefault(); e.currentTarget.classList.add('drag-over');
+}
+function onDragLeaveZone(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function onDropOnZone(e, groupId) {
+  e.preventDefault();
+  clearNameDropIndicators();
+  document.querySelectorAll('.group-drop-zone').forEach(el => el.classList.remove('drag-over'));
+  if (!draggedName) return;
+  const fromIdx = names.indexOf(draggedName);
+  names.splice(fromIdx, 1);
+  nameGroups[draggedName] = groupId;
+  // グループ末尾に追加
+  const lastInGroup = names.reduce((last,n,i) => (nameGroups[n]||groups[0].id)===groupId ? i : last, -1);
+  names.splice(lastInGroup+1, 0, draggedName);
+  draggedName = null;
+  saveNames(); renderGroupsAndNames(); renderGrid();
+}
+
+// ===== Drag: Clinic header from preview (列並び替え専用) =====
+function onDragStartClinic(e, label, ci) {
+  // 外勤先を担当者へ割り当てるD&Dは廃止(ポップアップに一本化)。列並び替えのみ残す。
+  draggedName = null;
+  draggedColIdx = (ci !== undefined && ci !== null) ? ci : null;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', label);
+}
+function onDragOverColHeader(e, ci) {
+  if (draggedColIdx === null || draggedColIdx === ci) return;
+  e.preventDefault(); e.stopPropagation();
+  document.querySelectorAll('.th-clinic').forEach(th => th.classList.remove('col-drag-over'));
+  e.currentTarget.classList.add('col-drag-over');
+}
+function onDragLeaveColHeader(e) {
+  e.currentTarget.classList.remove('col-drag-over');
+}
+function onDropOnColHeader(e, targetCi) {
+  e.preventDefault(); e.stopPropagation();
+  document.querySelectorAll('.th-clinic').forEach(th => th.classList.remove('col-drag-over'));
+  if (draggedColIdx === null || draggedColIdx === targetCi) { draggedColIdx = null; return; }
+  const fromCi = draggedColIdx;
+  const oldLabels = COLS.slice(1).map(c => c.label);
+  const clinicCols = COLS.slice(1);
+  const [moved] = clinicCols.splice(fromCi, 1);
+  clinicCols.splice(targetCi, 0, moved);
+  COLS = [COLS[0], ...clinicCols];
+  const newLabels = COLS.slice(1).map(c => c.label);
+  const oldToNew = {};
+  oldLabels.forEach((lbl, oci) => { oldToNew[oci] = newLabels.indexOf(lbl); });
+  // slotData 再マッピング
+  const newSlotData = {};
+  Object.keys(slotData).forEach(d => {
+    newSlotData[d] = {};
+    Object.keys(slotData[d]).forEach(k => {
+      const oci = parseInt(k), nci = oldToNew[oci];
+      if (nci !== undefined) newSlotData[d][nci] = slotData[d][oci];
+    });
+  });
+  slotData = newSlotData;
+  // colBand 再マッピング
+  const newColBand = {};
+  Object.keys(colBand).forEach(k => {
+    const oci = parseInt(k), nci = oldToNew[oci];
+    if (nci !== undefined) newColBand[nci] = colBand[oci];
+  });
+  colBand = newColBand;
+  draggedColIdx = null;
+  saveNames(); saveState();
+  if (storedRoster) renderRosterFromStored(); else renderPreviewEditable();
+}
+
+// ===== ColBand =====
+const BAND_CYCLE = ['', '外来', '日直', '当直', '日当直'];
+// 勤務帯のデフォルト (勤務時間表記 / 回復時間 h / ロジック用の絶対時刻オフセット分)
+// endMin が開始より小さい場合は翌日(+1440)に換算してロジックで扱う
+const BAND_DEFAULTS = {
+  '外来':   { time: '9:00-12:00', recovery: 1,  startMin: 9*60,  endMin: 12*60 },
+  '日直':   { time: '9:00-17:00', recovery: 8,  startMin: 9*60,  endMin: 17*60 },
+  '当直':   { time: '17:00-9:00', recovery: 8,  startMin: 17*60, endMin: 9*60 + 24*60 },
+  '日当直': { time: '9:00-9:00',  recovery: 24, startMin: 9*60,  endMin: 9*60 + 24*60 }
+};
+// 指定モード(毎日/隔日/偶数日/奇数日)が当該日に当てはまるか
+// idx は currentDates 内のインデックス (隔日判定用)
+function matchesDayMode(mode, d, idx) {
+  if (!mode || mode === 'every') return true;
+  if (mode === 'alternate') return (idx % 2) === 0;
+  const dom = new Date(d+'T00:00:00').getDate();
+  if (mode === 'even') return dom % 2 === 0;
+  if (mode === 'odd')  return dom % 2 === 1;
+  return true;
+}
+
+// 勤務日ルール/モードに従って currentDates の dutyOpen・slotData を再構築。
+// ルール未設定時のデフォルト:
+//   当直/オンコール … 毎日 (○)
+//   外勤           … ✕ (勤務日を設定しない限り振り分け対象外)
+function applyWorkPatternsToDates() {
+  const dutyLabel = COLS[0] ? COLS[0].label : '当直';
+  currentDates.forEach((d, idx) => {
+    if (!slotData[d]) slotData[d] = {};
+    const dt = new Date(d+'T00:00:00');
+    const nth = Math.ceil(dt.getDate() / 7);
+    const w = dt.getDay();
+
+    // 当直列: dayModes ベースで dutyOpen を設定
+    const dutyMode = dayModes[dutyLabel] || 'every';
+    dutyOpen[d] = matchesDayMode(dutyMode, d, idx) ? '○' : '✕';
+
+    COLS.slice(1).forEach((col, ci) => {
+      if (col.isOnCall || col.isSubduty) {
+        const mode = dayModes[col.label] || 'every';
+        slotData[d][ci] = matchesDayMode(mode, d, idx) ? '○' : '✕';
+        return;
+      }
+      // 外勤: workPatterns に従う。ルール未設定は ✕ 固定
+      const rules = workPatterns[col.label];
+      if (rules && rules.length) {
+        const match = rules.some(p => p.nth === nth && p.w === w);
+        slotData[d][ci] = match ? '○' : '✕';
+      } else {
+        slotData[d][ci] = '✕';
+      }
+    });
+  });
+}
+
+function toggleColBand(ci) {
+  const cur = colBand[ci] || '';
+  const idx = BAND_CYCLE.indexOf(cur);
+  const nextBand = BAND_CYCLE[(idx + 1) % BAND_CYCLE.length];
+  colBand[ci] = nextBand;
+  // 勤務帯が設定されたら 勤務時間と回復時間を自動反映
+  const col = COLS[ci+1];
+  if (col) {
+    const label = col.label;
+    const def = BAND_DEFAULTS[nextBand];
+    if (def) {
+      bikoData[label]    = def.time;
+      recoveryData[label] = def.recovery;
+    } else {
+      // 勤務帯なしに戻ったら値を消去
+      delete bikoData[label];
+      delete recoveryData[label];
+    }
+  }
+  saveState();
+  if (storedRoster) renderRosterFromStored();
+  else renderPreviewEditable();
+}
+
+// ===== Holiday =====
+function toggleHoliday(d) {
+  holidayDates[d] = !holidayDates[d];
+  saveState();
+  if (storedRoster) renderRosterFromStored();
+  else renderPreviewEditable();
+}
+
+// ===== Date =====
+function syncEndDate() {
+  const v = document.getElementById('start-date').value;
+  if (!v) return;
+  const d = new Date(v+'T00:00:00');
+  const last = new Date(d.getFullYear(), d.getMonth()+1, 0);
+  const y = last.getFullYear(), mo = String(last.getMonth()+1).padStart(2,'0'), dy = String(last.getDate()).padStart(2,'0');
+  document.getElementById('end-date').value = `${y}-${mo}-${dy}`;
+}
+
+async function fetchJpHolidays(year) {
+  if (holidayCache[year]) return holidayCache[year];
+  try {
+    const res = await fetch(`https://holidays-jp.github.io/api/v1/${year}/date.json`);
+    if (!res.ok) throw new Error('fetch failed');
+    holidayCache[year] = await res.json();
+  } catch(e) {
+    holidayCache[year] = {};
+  }
+  return holidayCache[year];
+}
+
+async function buildGrid() {
+  const start = document.getElementById('start-date').value;
+  const end   = document.getElementById('end-date').value;
+  if (!start||!end)  { alert('日付範囲を設定してください'); return; }
+  if (start > end)   { alert('開始日が終了日より後です'); return; }
+  if (!names.length) { alert('担当者を先に追加してください'); return; }
+  const newDates = getDatesInRange(start, end);
+  if (newDates.length > 93) { alert('日付範囲が長すぎます（最大93日）'); return; }
+
+  // 祝日APIから祝日を取得してholdayDatesに反映
+  const years = [...new Set(newDates.map(d => d.slice(0,4)))];
+  const allHolidays = {};
+  for (const y of years) { Object.assign(allHolidays, await fetchJpHolidays(Number(y))); }
+  newDates.forEach(d => {
+    if (allHolidays[d]) holidayDates[d] = true;
+    else if (holidayDates[d] === true && !allHolidays[d]) delete holidayDates[d];
+  });
+
+  currentDates = newDates;
+  names.forEach(name => {
+    if (!gridData[name]) gridData[name] = {};
+    // 未設定・空欄は当直デフォルト○に
+    currentDates.forEach(d => { if (!gridData[name][d]) gridData[name][d] = '○'; });
+  });
+  // 勤務日ルール/モードに従って dutyOpen・slotData を再構築 (既存値は上書き)
+  applyWorkPatternsToDates();
+  storedRoster = null;
+  document.getElementById('preview-btn').style.display = 'none';
+  // 集計パネルを空にする(前回の割当回数が残らないように)
+  const sp = document.getElementById('summary-panel');
+  if (sp) sp.innerHTML = '';
+  saveState(); renderGrid(); renderPreviewEditable();
+}
+
+function clearGrid() {
+  if (!confirm('チェックをすべてクリアしますか？')) return;
+  names.forEach(n => currentDates.forEach(d => { if (gridData[n]) gridData[n][d] = '○'; }));
+  currentDates.forEach(d => {
+    dutyOpen[d] = '○';
+    if (!slotData[d]) return;
+    COLS.slice(1).forEach((col, ci) => { slotData[d][ci] = '✕'; });
+  });
+  renderGrid();
+}
+
+// ===== Grid =====
+function toggleAllCells(ni) {
+  const name = names[ni];
+  if (!gridData[name]) return;
+  const allMaru = currentDates.every(d => gridData[name][d]==='○');
+  currentDates.forEach(d => { gridData[name][d] = allMaru ? '✕' : '○'; });
+  renderGrid();
+}
+
+function toggleCell(ni, date) {
+  const name = names[ni];
+  if (!gridData[name]) return;
+  const cur = gridData[name][date];
+  gridData[name][date] = cur==='○'?'✕':'○';
+  const btn = document.querySelector(`.cell-btn[data-ni="${ni}"][data-d="${date}"]`);
+  if (btn) { const v=gridData[name][date]; btn.textContent=v; btn.className='cell-btn'+(v==='○'?' maru':' batsu'); }
+}
+
+function renderGrid() {
+  const c = document.getElementById('grid-container');
+  if (!names.length) {
+    c.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:12px;">担当者を追加するとここに一覧が表示されます</div>';
+    return;
+  }
+  const orderedNames = getOrderedNames();
+  const hasDates = currentDates.length > 0;
+  let html = '<table class="input-grid"><thead><tr>';
+  html += '<th style="min-width:64px;text-align:left;padding:4px 8px;">担当者</th>';
+  if (hasDates) {
+    currentDates.forEach(d => {
+      const dt = new Date(d+'T00:00:00'), w = dt.getDay();
+      const cls = w===0?'wd-sun':w===6?'wd-sat':'';
+      html += `<th class="${cls}" style="min-width:26px;font-size:10px;">${dt.getDate()}<br><span style="font-weight:normal;">${WD[w]}</span></th>`;
+    });
+  } else {
+    html += '<th style="text-align:left;padding:4px 10px;font-weight:normal;color:#94a3b8;font-size:11px;">日付範囲を設定して「グリッドを更新」を押すと ○/✕ が表示されます</th>';
+  }
+  html += '</tr></thead><tbody>';
+  orderedNames.forEach(name => {
+    const ni = names.indexOf(name);
+    const gc = getGroupById(nameGroups[name]);
+    const bg = gc ? gc.color+'22' : '#f1f5f9';
+    html += `<tr>
+      <td class="date-td" style="text-align:left;padding:3px 8px;white-space:nowrap;cursor:pointer;user-select:none;background:${bg};"
+        title="クリックで全○/✕切替" onclick="toggleAllCells(${ni})">${esc(name)}</td>`;
+    if (hasDates) {
+      currentDates.forEach(d => {
+        const val = (gridData[name]&&gridData[name][d])||'';
+        const cls = val==='○'?' maru':val==='✕'?' batsu':'';
+        const dt2 = new Date(d+'T00:00:00'), w2 = dt2.getDay();
+        const cellBg = w2===6?'background:#daeef3;':w2===0?'background:#fde9d9;':'';
+        html += `<td style="${cellBg}padding:2px;"><button class="cell-btn${cls}" data-ni="${ni}" data-d="${d}" onclick="toggleCell(${ni},'${d}')">${val}</button></td>`;
+      });
+    } else {
+      html += '<td></td>';
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  c.innerHTML = html;
+}
+
+function getOrderedNames() {
+  const gOrder = groups.map(g => g.id);
+  return [...names].sort((a,b) => {
+    const ga = gOrder.indexOf(nameGroups[a]||groups[0]?.id);
+    const gb = gOrder.indexOf(nameGroups[b]||groups[0]?.id);
+    if (ga !== gb) return ga-gb;
+    return names.indexOf(a)-names.indexOf(b);
+  });
+}
+
+// ===== Preview (editable) =====
+function renderPreviewEditable() {
+  if (!currentDates.length) return;
+  const firstDt = new Date(currentDates[0]+'T00:00:00');
+  const lastDt  = new Date(currentDates[currentDates.length-1]+'T00:00:00');
+  const m1 = firstDt.getMonth()+1, m2 = lastDt.getMonth()+1;
+  const monthLabel = m1===m2 ? `${m1}月` : `${m1}〜${m2}月`;
+
+  let html = '<table class="roster-table"><thead><tr>';
+  html += `<th>${monthLabel}</th><th>曜日</th>`;
+  html += `<th style="padding:4px 6px;">
+    <input type="text" class="col-header-input" value="${esc(COLS[0].label)}"
+      size="${approxInputSize(COLS[0].label)}"
+      oninput="autoSizeHeaderInput(this)"
+      onchange="renameColumn(0,this.value)"
+      onkeydown="if(event.key==='Enter')this.blur();"
+      onclick="event.stopPropagation();" onmousedown="event.stopPropagation();">
+  </th>`;
+  if (false /* 待機列は廃止 */) html += `<th style="min-width:50px;background:#fef9c3;color:#a16207;">待機</th>`;
+  COLS.slice(1).forEach((col,ci) => {
+    const colsIdx = ci + 1;
+    html += `<th class="th-clinic" draggable="true"
+      ondragstart="onDragStartClinic(event,'${escQ(col.label)}',${ci})"
+      ondragover="onDragOverColHeader(event,${ci})"
+      ondragleave="onDragLeaveColHeader(event)"
+      ondrop="onDropOnColHeader(event,${ci})"
+      style="position:sticky;top:0;z-index:3;padding:4px 20px 4px 7px;">
+      <input type="text" class="col-header-input" value="${esc(col.label)}"
+        size="${approxInputSize(col.label)}"
+        oninput="autoSizeHeaderInput(this)"
+        draggable="false"
+        onchange="renameColumn(${colsIdx},this.value)"
+        onkeydown="if(event.key==='Enter')this.blur();"
+        onclick="event.stopPropagation();"
+        onmousedown="event.stopPropagation();"
+        ondragstart="event.preventDefault();event.stopPropagation();">
+      <button class="th-del" onclick="deleteColumn(${ci})" title="列を削除">×</button>
+    </th>`;
+  });
+  html += `<th><button onclick="addColumn()" style="background:none;border:1px dashed #94a3b8;border-radius:3px;cursor:pointer;color:#64748b;font-size:12px;padding:1px 7px;" title="外勤列を追加">＋</button></th>`;
+  html += `</tr></thead><tbody>`;
+
+  // 勤務帯行
+  html += `<tr><td style="font-weight:bold;white-space:nowrap;padding:3px 6px;background:#f8fafc;">勤務帯</td><td></td>`;
+  html += `<td></td>`;
+  if (false /* 待機列は廃止 */) html += `<td style="background:#fef9c3;"></td>`;
+  COLS.slice(1).forEach((col,ci) => {
+    if (col.isOnCall || col.isSubduty) {
+      // 副直・オンコールは常に「当直」扱いで勤務帯選択は不要
+      html += `<td style="color:#94a3b8;font-size:10px;text-align:center;">—</td>`;
+      return;
+    }
+    const v = colBand[ci] || '';
+    const cls = v ? ` band-${v}` : '';
+    html += `<td class="colband-cell${cls}" onclick="toggleColBand(${ci})" title="クリックで勤務帯切替">${v}</td>`;
+  });
+  html += `<td></td></tr>`;
+
+  // 勤務日行 (当直/オンコール: 毎日/隔日/偶数日/奇数日 / 外勤: 第N曜日)
+  html += `<tr class="biko-row"><td style="font-weight:bold;white-space:nowrap;padding:3px 6px;">勤務日</td><td></td>`;
+  const dutySummary = summarizeDayMode(dayModes[COLS[0].label]);
+  html += `<td style="cursor:pointer;text-align:center;padding:3px;user-select:none;font-size:11px;" onclick="openWorkDaysPopup('${escQ(COLS[0].label)}', this)" title="クリックで勤務日を設定">${dutySummary}</td>`;
+  COLS.slice(1).forEach(col => {
+    if (col.isOnCall || col.isSubduty) {
+      const summary = summarizeDayMode(dayModes[col.label]);
+      html += `<td style="cursor:pointer;text-align:center;padding:3px;user-select:none;font-size:11px;" onclick="openWorkDaysPopup('${escQ(col.label)}', this)" title="クリックで勤務日を設定">${summary}</td>`;
+    } else {
+      const summary = summarizeWorkPatterns(workPatterns[col.label]);
+      html += `<td style="cursor:pointer;text-align:center;padding:3px;user-select:none;" onclick="openWorkDaysPopup('${escQ(col.label)}', this)" title="クリックで勤務日を設定">${summary}</td>`;
+    }
+  });
+  html += `<td></td></tr>`;
+
+  // 勤務時間行 (回復時間はバンドのデフォルトを内部で使用、編集UIはライトプラン実装時に追加予定)
+  html += `<tr class="biko-row"><td style="font-weight:bold;white-space:nowrap;padding:3px 6px;">勤務時間</td><td></td>`;
+  html += `<td><input class="biko-input" type="text" value="${esc(bikoData[COLS[0].label]||'')}" oninput="bikoData['${escQ(COLS[0].label)}']=this.value"></td>`;
+  COLS.slice(1).forEach(col => {
+    html += `<td><input class="biko-input" type="text" value="${esc(bikoData[col.label]||'')}" oninput="bikoData['${escQ(col.label)}']=this.value"></td>`;
+  });
+  html += `<td></td></tr>`;
+
+  currentDates.forEach(d => {
+    const dt = new Date(d+'T00:00:00'), w = dt.getDay();
+    const isSat=w===6, isSun=w===0, isWeekend=isSat||isSun;
+    const isHoliday = !!holidayDates[d];
+    const rowCls = isHoliday?'row-holiday':isSat?'row-sat':isSun?'row-sun':'';
+    const wdCls  = isSun?'wd-sun':isSat?'wd-sat':'';
+    html += `<tr class="${rowCls}">`;
+    html += `<td class="td-date" onclick="toggleHoliday('${d}')" title="クリックで祝日切替">${dt.getDate()}</td>`;
+    html += `<td class="td-wd ${wdCls}">${WD[w]}</td>`;
+    // 当直セル: ○/✕ トグル + プリアサイン(右クリックで日直/当直に分割)
+    const preDuty = (preAssigned[d] && preAssigned[d]['duty']) || '';
+    const preNichoku = (preAssigned[d] && preAssigned[d]['nichoku']) || '';
+    const dOpen = dutyOpen[d] !== '✕';
+    const ctxAttr = `oncontextmenu="event.preventDefault();toggleSplitCell('${d}','duty')" title="右クリックで日直/当直に分割"`;
+    if (isSplitAt(d, 'duty')) {
+      const nichokuOpen = dutyOpenNichoku[d] !== '✕';
+      const renderSub = (label, value, type, openFlag) => {
+        const filled = !!value;
+        const clsBase = filled ? 'pre-filled' : (openFlag ? 'slot-maru' : 'slot-batsu');
+        const clickHandler = filled
+          ? `clearPreAssign('${d}','${type}',null)`
+          : `toggleSubOpen('${d}','${type}',null)`;
+        const hint = filled ? 'クリックで解除' : 'クリックで有無を切替';
+        return `<div class="duty-sub ${clsBase}"
+          ondragover="onDragOverPreAssign(event)"
+          ondragleave="onDragLeavePreAssign(event)"
+          ondrop="onDropPreAssign(event,'${d}','${type}',null)"
+          onclick="${clickHandler}" title="${hint}">
+          <span class="sub-label">${label}</span>
+          ${filled
+            ? `<span class="sub-value">${esc(value)}</span>`
+            : `<span class="sub-value">${openFlag?'○':'✕'}</span>`}
+        </div>`;
+      };
+      html += `<td class="duty-cell-split" ${ctxAttr}>
+        <div class="duty-split">
+          ${renderSub('日直', preNichoku, 'nichoku', nichokuOpen)}
+          ${renderSub('当直', preDuty,    'duty',    dOpen)}
+        </div>
+      </td>`;
+    } else if (preDuty) {
+      html += `<td class="pre-assign-cell pre-filled" ${ctxAttr}
+        ondragover="onDragOverPreAssign(event)"
+        ondragleave="onDragLeavePreAssign(event)"
+        ondrop="onDropPreAssign(event,'${d}','duty',null)"
+        onclick="clearPreAssign('${d}','duty',null)">${esc(preDuty)}</td>`;
+    } else {
+      html += `<td class="slot-cell${dOpen?' slot-maru':' slot-batsu'}" ${ctxAttr}
+        ondragover="onDragOverPreAssign(event)"
+        ondragleave="onDragLeavePreAssign(event)"
+        ondrop="onDropPreAssign(event,'${d}','duty',null)"
+        onclick="toggleDutyOpen('${d}')">${dOpen?'○':'✕'}</td>`;
+    }
+    // 待機プリアサインセル
+    if (false /* 待機列は廃止 */) {
+      const preWait = (preAssigned[d] && preAssigned[d]['waiting']) || '';
+      html += `<td class="pre-assign-cell${preWait?' pre-filled':''}" style="background:${preWait?'':'#fefce8'};"
+        ondragover="onDragOverPreAssign(event)"
+        ondragleave="onDragLeavePreAssign(event)"
+        ondrop="onDropPreAssign(event,'${d}','waiting',null)"
+        ${preWait?`onclick="clearPreAssign('${d}','waiting',null)" title="クリックで解除"`:''}>${esc(preWait)}</td>`;
+    }
+    // 外勤スロットセル（プリアサイン対応） — オンコール列は右クリックで分割可能
+    COLS.slice(1).forEach((col,ci) => {
+      const raw = slotData[d] && slotData[d][ci] !== undefined ? slotData[d][ci] : '';
+      const preKey = `clinic_${ci}`;
+      const preName = (preAssigned[d] && preAssigned[d][preKey]) || '';
+      const preNichokuKey = `clinic_${ci}_nichoku`;
+      const preNichokuName = (preAssigned[d] && preAssigned[d][preNichokuKey]) || '';
+      const splitKey = `clinic_${ci}`;
+      const splittable = col.isOnCall || col.isSubduty;
+      const splitOn = splittable && isSplitAt(d, splitKey);
+      const ctxAttr = splittable
+        ? `oncontextmenu="event.preventDefault();toggleSplitCell('${d}','${splitKey}')" title="右クリックで日直/当直に分割"`
+        : '';
+      if (splitOn) {
+        const nichokuRaw = (slotDataNichoku[d] && slotDataNichoku[d][ci]) || '';
+        const touOpen     = raw === '○';
+        const nichokuOpen = nichokuRaw !== '✕'; // 未設定(空)は ○ 扱い
+        const renderSub = (label, value, type, openFlag) => {
+          const filled = !!value;
+          const clsBase = filled ? 'pre-filled' : (openFlag ? 'slot-maru' : 'slot-batsu');
+          const clickHandler = filled
+            ? `clearPreAssign('${d}','${type}',${ci})`
+            : `toggleSubOpen('${d}','${type}',${ci})`;
+          const hint = filled ? 'クリックで解除' : 'クリックで有無を切替';
+          return `<div class="duty-sub ${clsBase}"
+            ondragover="onDragOverPreAssign(event)"
+            ondragleave="onDragLeavePreAssign(event)"
+            ondrop="onDropPreAssign(event,'${d}','${type}',${ci})"
+            onclick="${clickHandler}" title="${hint}">
+            <span class="sub-label">${label}</span>
+            ${filled
+              ? `<span class="sub-value">${esc(value)}</span>`
+              : `<span class="sub-value">${openFlag?'○':'✕'}</span>`}
+          </div>`;
+        };
+        html += `<td class="duty-cell-split" ${ctxAttr}>
+          <div class="duty-split">
+            ${renderSub('日直', preNichokuName, 'clinic-nichoku', nichokuOpen)}
+            ${renderSub('当直', preName,        'clinic',         touOpen)}
+          </div>
+        </td>`;
+      } else {
+        const cls = preName ? ' slot-preassign' : (raw==='○'?' slot-maru':raw==='✕'?' slot-batsu':'');
+        const cellContent = preName || raw;
+        html += `<td class="slot-cell${cls}" data-d="${d}" data-ci="${ci}" ${ctxAttr}
+          onclick="${preName?`clearPreAssign('${d}','clinic',${ci})`:`toggleSlot('${d}',${ci})`}"
+          ondragover="onDragOverPreAssign(event)"
+          ondragleave="onDragLeavePreAssign(event)"
+          ondrop="onDropPreAssign(event,'${d}','clinic',${ci})">${esc(cellContent)}</td>`;
+      }
+    });
+    html += `<td></td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('roster-view').innerHTML = html;
+  if (!storedRoster) document.getElementById('preview-btn').style.display = 'none';
+  switchTab('roster');
+}
+
+// ===== Column add/delete =====
+function addColumn() {
+  const label = prompt('追加する外勤先の列名を入力してください');
+  if (!label||!label.trim()) return;
+  const trimmed = label.trim();
+  COLS.push({ label: trimmed, allDays: false });
+  const newCi = COLS.length-2;
+  // デフォルト勤務帯を「外来」に設定し、勤務時間・回復時間も連動して反映
+  colBand[newCi] = '外来';
+  const def = BAND_DEFAULTS['外来'];
+  if (def) {
+    bikoData[trimmed]    = def.time;     // '9:00-12:00'
+    recoveryData[trimmed] = def.recovery; // 1
+  }
+  currentDates.forEach(d => {
+    if (!slotData[d]) slotData[d]={};
+    slotData[d][newCi] = '✕'; // 新規外勤列は全日 ✕ をデフォルトに(勤務日設定で必要日だけ ○ に切替)
+  });
+  saveState(); renderPreviewEditable();
+  renderNameClinicsPopupContent(); // ポップアップが開いていれば新しい外勤先を即反映
+}
+
+// ===== ci-keyed state を一括シフトするヘルパー =====
+// delta > 0: 挿入 (targetCi 以上を delta 分上にシフト)
+// delta < 0: 削除 (targetCi のエントリを削除、それより大きいものを下にシフト)
+function shiftCiIndices(targetCi, delta) {
+  const transformKey = (idx) => {
+    if (delta > 0) return idx >= targetCi ? idx + delta : idx;
+    if (idx === targetCi) return null;
+    return idx > targetCi ? idx + delta : idx;
+  };
+  const shiftDictByDate = (container) => {
+    Object.keys(container).forEach(d => {
+      if (!container[d]) return;
+      const shifted = {};
+      Object.keys(container[d]).forEach(k => {
+        const idx = parseInt(k);
+        const ni  = transformKey(idx);
+        if (ni !== null) shifted[ni] = container[d][k];
+      });
+      container[d] = shifted;
+    });
+  };
+  shiftDictByDate(slotData);
+  shiftDictByDate(slotDataNichoku);
+
+  // colBand (ci -> band)
+  const newBand = {};
+  Object.keys(colBand).forEach(k => {
+    const idx = parseInt(k);
+    const ni  = transformKey(idx);
+    if (ni !== null) newBand[ni] = colBand[k];
+  });
+  Object.keys(colBand).forEach(k => delete colBand[k]);
+  Object.assign(colBand, newBand);
+
+  // preAssigned の clinic_N / clinic_N_nichoku キーをシフト
+  Object.keys(preAssigned).forEach(d => {
+    const shifted = {};
+    Object.keys(preAssigned[d]).forEach(k => {
+      const m1 = k.match(/^clinic_(\d+)$/);
+      const m2 = k.match(/^clinic_(\d+)_nichoku$/);
+      if (m1) {
+        const ni = transformKey(parseInt(m1[1]));
+        if (ni !== null) shifted[`clinic_${ni}`] = preAssigned[d][k];
+      } else if (m2) {
+        const ni = transformKey(parseInt(m2[1]));
+        if (ni !== null) shifted[`clinic_${ni}_nichoku`] = preAssigned[d][k];
+      } else {
+        shifted[k] = preAssigned[d][k];
+      }
+    });
+    preAssigned[d] = shifted;
+  });
+
+  // storedRoster の clinics / clinicsNichoku をシフト
+  if (storedRoster) {
+    storedRoster.forEach(row => {
+      ['clinics', 'clinicsNichoku'].forEach(field => {
+        if (!row[field]) return;
+        const shifted = {};
+        Object.keys(row[field]).forEach(k => {
+          const idx = parseInt(k);
+          const ni  = transformKey(idx);
+          if (ni !== null) shifted[ni] = row[field][k];
+        });
+        row[field] = shifted;
+      });
+    });
+  }
+}
+
+// ===== 副直列 (オンコールと同系統、当直のすぐ横。オンコールより左に並ぶ) =====
+function addSubDuty() {
+  const count = COLS.filter(c => c.isSubduty).length;
+  if (count >= 3) return;
+  const insertColsIdx = 1 + count; // 当直(0)の直後、既存副直の末尾。オンコール群より左に入る
+  const targetCi = insertColsIdx - 1;
+
+  shiftCiIndices(targetCi, +1);
+  Object.keys(slotData).forEach(d => { slotData[d][targetCi] = '○'; });
+  if (storedRoster) {
+    storedRoster.forEach(row => {
+      if (!row.clinics) row.clinics = {};
+      row.clinics[targetCi] = '';
+    });
+  }
+
+  COLS.splice(insertColsIdx, 0, { label: '副直', allDays: true, isSubduty: true });
+  renumberSubDuty();
+  const newIdx = count + 1;
+  groups.forEach(g => {
+    if (!g.maxSubDuty) g.maxSubDuty = {};
+    if (g.maxSubDuty[newIdx] == null) g.maxSubDuty[newIdx] = 0;
+  });
+  saveNames();
+  saveState();
+  renderGroupsAndNames();
+  renderPreviewEditable();
+  if (storedRoster) renderRosterFromStored();
+  updateSubDutyButton();
+}
+
+function renumberSubDuty() {
+  let n = 0;
+  COLS.forEach(c => {
+    if (c.isSubduty) {
+      n++;
+      if (/^副直\d*$/.test(c.label)) {
+        c.label = n === 1 ? '副直' : '副直' + n;
+      }
+    }
+  });
+}
+
+function updateSubDutyButton() {
+  const btn = document.getElementById('add-subduty-btn');
+  const cnt = document.getElementById('subduty-count');
+  if (!btn || !cnt) return;
+  const count = COLS.filter(c => c.isSubduty).length;
+  cnt.textContent = `(${count}/3)`;
+  const max = count >= 3;
+  btn.disabled = max;
+  btn.style.opacity = max ? '.4' : '1';
+  btn.style.cursor  = max ? 'not-allowed' : 'pointer';
+}
+
+function updateGroupMaxSubDuty(id, idx, val) {
+  const g = groups.find(g => g.id === id);
+  if (!g) return;
+  if (!g.maxSubDuty) g.maxSubDuty = {};
+  g.maxSubDuty[idx] = Math.max(0, parseInt(val)||0);
+  saveNames();
+}
+
+// ===== オンコール列 =====
+function addOnCall() {
+  const count = COLS.filter(c => c.isOnCall).length;
+  if (count >= 3) return;
+  const subdutyCount = COLS.filter(c => c.isSubduty).length;
+  const insertColsIdx = 1 + subdutyCount + count;  // 当直(0)→副直群→既存オンコール末尾
+  const targetCi = insertColsIdx - 1; // slotData/colBand/preAssigned/clinics の ci
+
+  // 既存の ci-keyed state を一段上にシフト
+  shiftCiIndices(targetCi, +1);
+
+  // 新規オンコール列は全日 '○' をデフォルトに
+  Object.keys(slotData).forEach(d => { slotData[d][targetCi] = '○'; });
+  if (storedRoster) {
+    storedRoster.forEach(row => {
+      if (!row.clinics) row.clinics = {};
+      row.clinics[targetCi] = '';
+    });
+  }
+
+  // COLS に挿入
+  COLS.splice(insertColsIdx, 0, { label: 'オンコール', allDays: true, isOnCall: true });
+  renumberOnCalls();
+  // 新規オンコールの上限を全グループで明示的に 0 に初期化
+  // (UIが 0 と表示する状態と実データを合致させる)
+  const newIdx = count + 1;
+  groups.forEach(g => {
+    if (!g.maxOnCall) g.maxOnCall = {};
+    if (g.maxOnCall[newIdx] == null) g.maxOnCall[newIdx] = 0;
+  });
+  saveNames();
+  saveState();
+  renderGroupsAndNames(); // グループタブに「オンコールN 回」入力を反映
+  renderPreviewEditable();
+  if (storedRoster) renderRosterFromStored();
+  updateOnCallButton();
+}
+
+// オンコール列を通し番号で振り直す(手動で改名された列はそのまま維持)
+function renumberOnCalls() {
+  let n = 0;
+  COLS.forEach(c => {
+    if (c.isOnCall) {
+      n++;
+      // 「オンコール」「オンコール2」…のデフォルト形式の場合のみ自動再ナンバリング
+      if (/^オンコール\d*$/.test(c.label)) {
+        c.label = n === 1 ? 'オンコール' : 'オンコール' + n;
+      }
+    }
+  });
+}
+
+function updateOnCallButton() {
+  const btn = document.getElementById('add-oncall-btn');
+  const cnt = document.getElementById('oncall-count');
+  if (!btn || !cnt) return;
+  const count = COLS.filter(c => c.isOnCall).length;
+  cnt.textContent = `(${count}/3)`;
+  const max = count >= 3;
+  btn.disabled = max;
+  btn.style.opacity = max ? '.4' : '1';
+  btn.style.cursor  = max ? 'not-allowed' : 'pointer';
+}
+
+function deleteColumn(ci) {
+  if (!confirm(`「${COLS[ci+1].label}」列を削除しますか？`)) return;
+  const removedLabel = COLS[ci+1].label;
+  const removedWasOnCall  = !!COLS[ci+1].isOnCall;
+  const removedWasSubduty = !!COLS[ci+1].isSubduty;
+  COLS.splice(ci+1, 1);
+  // ci-keyed state を一括シフト (slotData/slotDataNichoku/colBand/preAssigned/storedRoster)
+  shiftCiIndices(ci, -1);
+  // オンコール列を削除した場合、グループの maxOnCall を詰め直す (末尾を落とす)
+  if (removedWasOnCall) {
+    const remainingCount = COLS.filter(c => c.isOnCall).length;
+    groups.forEach(g => {
+      if (!g.maxOnCall) { g.maxOnCall = {}; return; }
+      const next = {};
+      for (let i = 1; i <= remainingCount; i++) {
+        if (g.maxOnCall[i] != null) next[i] = g.maxOnCall[i];
+      }
+      g.maxOnCall = next;
+    });
+  }
+  // 副直列を削除した場合、グループの maxSubDuty を詰め直す
+  if (removedWasSubduty) {
+    const remainingCount = COLS.filter(c => c.isSubduty).length;
+    groups.forEach(g => {
+      if (!g.maxSubDuty) { g.maxSubDuty = {}; return; }
+      const next = {};
+      for (let i = 1; i <= remainingCount; i++) {
+        if (g.maxSubDuty[i] != null) next[i] = g.maxSubDuty[i];
+      }
+      g.maxSubDuty = next;
+    });
+  }
+  // nameOutsides からも削除
+  names.forEach(n => {
+    if (nameOutsides[n]) nameOutsides[n] = nameOutsides[n].filter(c => c !== removedLabel);
+  });
+  // 該当列の勤務日ルール・備考・回復時間・勤務日モードも削除
+  delete workPatterns[removedLabel];
+  delete dayModes[removedLabel];
+  delete bikoData[removedLabel];
+  delete recoveryData[removedLabel];
+  renumberOnCalls();
+  renumberSubDuty();
+  updateOnCallButton();
+  updateSubDutyButton();
+  saveNames(); saveState();
+  renderGroupsAndNames();
+  renderPreviewEditable();
+  if (storedRoster) renderRosterFromStored(); // 集計(副直/オンコール列)も連動して再描画
+}
+
+// ===== 日直/当直分割ヘルパー =====
+// splitDays[d] は旧データ (true) または新データ ({ duty: true, clinic_0: true, ... })
+function isSplitAt(d, key) {
+  const e = splitDays[d];
+  if (!e) return false;
+  if (e === true) return key === 'duty';
+  return !!e[key];
+}
+function _normalizeSplitEntry(d) {
+  if (splitDays[d] === true) splitDays[d] = { duty: true };
+}
+// セル単位の分割トグル。key は 'duty' または 'clinic_<ci>'
+function toggleSplitCell(d, key) {
+  _normalizeSplitEntry(d);
+  const currentlySplit = !!(splitDays[d] && splitDays[d][key]);
+  if (currentlySplit) {
+    // 解除時、日直にデータがあれば確認
+    const preKey = key === 'duty' ? 'nichoku' : `${key}_nichoku`;
+    const rosterRow = storedRoster ? storedRoster.find(r => r.d === d) : null;
+    let hasData = !!(preAssigned[d] && preAssigned[d][preKey]);
+    if (!hasData && rosterRow) {
+      if (key === 'duty') hasData = !!rosterRow.nichoku;
+      else {
+        const ci = parseInt(key.split('_')[1]);
+        hasData = !!(rosterRow.clinicsNichoku && rosterRow.clinicsNichoku[ci]);
+      }
+    }
+    if (hasData && !confirm('日直側に設定されたデータが失われます。分割を解除しますか？')) return;
+    // データクリア
+    if (preAssigned[d]) delete preAssigned[d][preKey];
+    if (rosterRow) {
+      if (key === 'duty') rosterRow.nichoku = '';
+      else {
+        const ci = parseInt(key.split('_')[1]);
+        if (rosterRow.clinicsNichoku) delete rosterRow.clinicsNichoku[ci];
+      }
+    }
+    delete splitDays[d][key];
+    if (!Object.keys(splitDays[d]).length) delete splitDays[d];
+  } else {
+    if (!splitDays[d]) splitDays[d] = {};
+    splitDays[d][key] = true;
+  }
+  saveState();
+  if (storedRoster) renderRosterFromStored(); else renderPreviewEditable();
+}
+// 後方互換ラッパー (HTML側が既に toggleSplitDay('d') を参照しているため)
+function toggleSplitDay(d) { toggleSplitCell(d, 'duty'); }
+
+// 分割後のサブセル ○/✕ トグル (未割当時のクリック)
+function toggleSubOpen(d, type, ci) {
+  if (type === 'duty') {
+    dutyOpen[d] = dutyOpen[d] === '✕' ? '○' : '✕';
+  } else if (type === 'nichoku') {
+    dutyOpenNichoku[d] = dutyOpenNichoku[d] === '✕' ? '○' : '✕';
+  } else if (type === 'clinic') {
+    if (!slotData[d]) slotData[d] = {};
+    slotData[d][ci] = slotData[d][ci] === '○' ? '✕' : '○';
+  } else if (type === 'clinic-nichoku') {
+    if (!slotDataNichoku[d]) slotDataNichoku[d] = {};
+    slotDataNichoku[d][ci] = slotDataNichoku[d][ci] === '○' ? '✕' : '○';
+  }
+  saveState();
+  renderPreviewEditable();
+}
+
+// ===== 列名のインライン編集 =====
+function renameColumn(colsIdx, newLabel) {
+  newLabel = (newLabel || '').trim();
+  if (!COLS[colsIdx]) return;
+  const oldLabel = COLS[colsIdx].label;
+  if (!newLabel || oldLabel === newLabel) {
+    // 空入力または無変更: 画面を元ラベルに戻すため再描画だけ行う
+    if (storedRoster) renderRosterFromStored(); else renderPreviewEditable();
+    return;
+  }
+  // 他列と同名なら拒否
+  if (COLS.some((c,i) => i !== colsIdx && c.label === newLabel)) {
+    alert('同じ名前の列が既に存在します');
+    if (storedRoster) renderRosterFromStored(); else renderPreviewEditable();
+    return;
+  }
+
+  // COLS のラベル更新
+  COLS[colsIdx].label = newLabel;
+
+  // 担当者の外勤先配列も旧ラベル→新ラベルに差し替え
+  Object.keys(nameOutsides).forEach(n => {
+    if (!nameOutsides[n]) return;
+    nameOutsides[n] = nameOutsides[n].map(c => c === oldLabel ? newLabel : c);
+  });
+
+  // 備考欄のキー移行
+  if (bikoData && bikoData[oldLabel] !== undefined) {
+    bikoData[newLabel] = bikoData[oldLabel];
+    delete bikoData[oldLabel];
+  }
+  // 回復時間のキー移行
+  if (recoveryData[oldLabel] !== undefined) {
+    recoveryData[newLabel] = recoveryData[oldLabel];
+    delete recoveryData[oldLabel];
+  }
+  // 勤務日ルールのキー移行
+  if (workPatterns[oldLabel] !== undefined) {
+    workPatterns[newLabel] = workPatterns[oldLabel];
+    delete workPatterns[oldLabel];
+  }
+  // 勤務日モード(当直/オンコール)のキー移行
+  if (dayModes[oldLabel] !== undefined) {
+    dayModes[newLabel] = dayModes[oldLabel];
+    delete dayModes[oldLabel];
+  }
+
+  saveNames(); saveState();
+  renderGroupsAndNames();
+  if (storedRoster) renderRosterFromStored(); else renderPreviewEditable();
+  renderNameClinicsPopupContent(); // ポップアップが開いていれば新ラベルを反映
+}
+
+// ===== 勤務日(第N曜日)ルール =====
+const WD_JA = ['日','月','火','水','木','金','土'];
+
+// workPatterns[label] を短い表記に要約 (例: "第1,3月 第2水")
+function summarizeWorkPatterns(rules) {
+  if (!rules || !rules.length) return '<span style="color:#94a3b8;">未設定</span>';
+  // 曜日ごとに nth をまとめる
+  const byW = {};
+  rules.forEach(p => {
+    if (!byW[p.w]) byW[p.w] = [];
+    byW[p.w].push(p.nth);
+  });
+  const parts = [];
+  for (let w = 0; w < 7; w++) {
+    if (!byW[w]) continue;
+    const nths = byW[w].sort((a,b)=>a-b).join(',');
+    const col = w===0?'#dc2626':w===6?'#2563eb':'#1e293b';
+    parts.push(`<span style="color:${col};">第${nths}${WD_JA[w]}</span>`);
+  }
+  return parts.join(' ');
+}
+
+let currentWorkDaysPopupLabel = null;
+
+function openWorkDaysPopup(label, anchorEl) {
+  currentWorkDaysPopupLabel = label;
+  const popup = document.getElementById('work-days-popup');
+  if (!popup) return;
+  renderWorkDaysPopupBody();
+  document.getElementById('wdp-title').textContent = `${label} の勤務日`;
+
+  popup.classList.add('show');
+  popup.style.visibility = 'hidden';
+  popup.style.left = '-9999px';
+  popup.style.top = '0px';
+
+  // 一度表示してサイズ測定
+  const margin = 8;
+  const rect = anchorEl.getBoundingClientRect();
+  const popupW = popup.offsetWidth;
+  const popupH = popup.offsetHeight;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let left = rect.left;
+  if (left + popupW > vw - margin) left = vw - popupW - margin;
+  if (left < margin) left = margin;
+  let top = rect.bottom + 6;
+  if (top + popupH > vh - margin) {
+    top = rect.top - popupH - 6;
+    if (top < margin) top = margin;
+  }
+  popup.style.left = (left + window.scrollX) + 'px';
+  popup.style.top  = (top  + window.scrollY) + 'px';
+  popup.style.visibility = 'visible';
+}
+
+// 当該列が 当直/副直/オンコール (dayMode系) か、それとも外勤 (workPatterns系) かを判定
+function isDayModeColumn(label) {
+  if (!COLS.length) return false;
+  if (label === COLS[0].label) return true;
+  const col = COLS.find(c => c.label === label);
+  return !!(col && (col.isOnCall || col.isSubduty));
+}
+
+// dayMode 値を短い日本語に
+const DAY_MODE_LABELS = {
+  every:     '毎日',
+  alternate: '隔日',
+  even:      '偶数日',
+  odd:       '奇数日'
+};
+function summarizeDayMode(mode) {
+  const m = mode || 'every';
+  return DAY_MODE_LABELS[m] || '毎日';
+}
+
+function renderWorkDaysPopupBody() {
+  const body = document.getElementById('wdp-body');
+  if (!body || !currentWorkDaysPopupLabel) return;
+  if (isDayModeColumn(currentWorkDaysPopupLabel)) {
+    renderDayModePicker(body);
+  } else {
+    renderNthWeekdayGrid(body);
+  }
+}
+
+function renderDayModePicker(body) {
+  const label = currentWorkDaysPopupLabel;
+  const current = dayModes[label] || 'every';
+  const items = [
+    { mode: 'every', text: '毎日' },
+    { mode: 'even',  text: '偶数日' },
+    { mode: 'odd',   text: '奇数日' }
+  ];
+  let html = '<div class="wdp-mode-list">';
+  items.forEach(it => {
+    const on = current === it.mode ? 'on' : '';
+    html += `<div class="wdp-mode-item ${on}" onclick="event.stopPropagation();setDayMode('${it.mode}')">
+      <span class="wdp-box"></span>
+      <span>${it.text}</span>
+    </div>`;
+  });
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+function renderNthWeekdayGrid(body) {
+  const rules = workPatterns[currentWorkDaysPopupLabel] || [];
+  const has = (nth, w) => rules.some(p => p.nth===nth && p.w===w);
+  let html = '<table><thead><tr><th></th>';
+  for (let w = 0; w < 7; w++) {
+    const clr = w===0?'wdp-sun':w===6?'wdp-sat':'';
+    html += `<th class="${clr} wdp-head-clickable" onclick="event.stopPropagation();toggleWorkDayColumn(${w})" title="クリックで第1〜第5を一括切替">${WD_JA[w]}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+  for (let nth = 1; nth <= 5; nth++) {
+    html += `<tr><th>第${nth}</th>`;
+    for (let w = 0; w < 7; w++) {
+      html += `<td class="${has(nth,w)?'on':''}" onclick="event.stopPropagation();toggleWorkDayPattern(${nth},${w})"><span class="wdp-box"></span></td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+// 当直/オンコールの勤務日モードを設定
+function setDayMode(mode) {
+  const label = currentWorkDaysPopupLabel;
+  if (!label) return;
+  dayModes[label] = mode;
+  applyWorkPatternsToDates();
+  saveState();
+  renderWorkDaysPopupBody();
+  renderPreviewEditable();
+}
+
+// 曜日ヘッダークリックで第1〜第5を一括切替 (全てONなら全てOFF、そうでなければ全てON)
+function toggleWorkDayColumn(w) {
+  const label = currentWorkDaysPopupLabel;
+  if (!label) return;
+  if (!workPatterns[label]) workPatterns[label] = [];
+  const rules = workPatterns[label];
+  const allOn = [1,2,3,4,5].every(nth => rules.some(p => p.nth===nth && p.w===w));
+  if (allOn) {
+    workPatterns[label] = rules.filter(p => p.w !== w);
+  } else {
+    for (let nth = 1; nth <= 5; nth++) {
+      if (!rules.some(p => p.nth===nth && p.w===w)) rules.push({ nth, w });
+    }
+  }
+  applyWorkPatternsToDates();
+  saveState();
+  renderWorkDaysPopupBody();
+  renderPreviewEditable();
+}
+
+function toggleWorkDayPattern(nth, w) {
+  const label = currentWorkDaysPopupLabel;
+  if (!label) return;
+  if (!workPatterns[label]) workPatterns[label] = [];
+  const idx = workPatterns[label].findIndex(p => p.nth===nth && p.w===w);
+  if (idx >= 0) workPatterns[label].splice(idx, 1);
+  else           workPatterns[label].push({ nth, w });
+  // 即時にルールを日付に反映 + 再描画
+  applyWorkPatternsToDates();
+  saveState();
+  renderWorkDaysPopupBody();
+  renderPreviewEditable();
+  // ポップアップ位置を再計算しない(ユーザーの連続クリック操作のため固定)
+}
+
+function closeWorkDaysPopup() {
+  currentWorkDaysPopupLabel = null;
+  const popup = document.getElementById('work-days-popup');
+  if (popup) popup.classList.remove('show');
+}
+
+// 列ヘッダー input の size 属性を入力内容に合わせて更新 (CJK文字は幅2カウント)
+function approxInputSize(label) {
+  let w = 0;
+  for (const c of (label || '')) {
+    w += c.codePointAt(0) > 127 ? 2 : 1;
+  }
+  return Math.max(3, Math.ceil(w) + 1);
+}
+function autoSizeHeaderInput(el) {
+  el.size = approxInputSize(el.value || '');
+}
+
+function toggleDutyOpen(date) {
+  dutyOpen[date] = dutyOpen[date] === '✕' ? '○' : '✕';
+  saveState();
+  renderPreviewEditable();
+}
+
+function toggleSlot(date, ci) {
+  if (!slotData[date]) slotData[date] = {};
+  const cur = slotData[date][ci];
+  slotData[date][ci] = cur==='○'?'✕':'○';
+  const td = document.querySelector(`.slot-cell[data-d="${date}"][data-ci="${ci}"]`);
+  if (td) {
+    const v = slotData[date][ci];
+    td.textContent = v;
+    td.className = 'slot-cell' + (v==='○'?' slot-maru':' slot-batsu');
+  }
+}
+
+// ===== Pre-assign drag/drop (プレビュー画面: 作成前の事前割り当て) =====
+function onDragOverPreAssign(e) {
+  if (!draggedName || dragSourceCell) return; // 担当者タグからのみ受け付ける
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over-cell');
+}
+function onDragLeavePreAssign(e) {
+  e.currentTarget.classList.remove('drag-over-cell');
+}
+function _preAssignKey(type, ci) {
+  if (type === 'clinic')         return `clinic_${ci}`;
+  if (type === 'clinic-nichoku') return `clinic_${ci}_nichoku`;
+  return type; // 'duty' | 'nichoku' | 'waiting'
+}
+function onDropPreAssign(e, d, type, ci) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over-cell');
+  if (!draggedName || dragSourceCell) return; // 担当者タグからのみ
+  if (!preAssigned[d]) preAssigned[d] = {};
+  const key = _preAssignKey(type, ci);
+  preAssigned[d][key] = draggedName;
+  // 外勤スロット(当直時間帯のみ)の場合はスロットも有効化
+  if (type === 'clinic') {
+    if (!slotData[d]) slotData[d] = {};
+    slotData[d][ci] = '○';
+  }
+  draggedName = null;
+  saveState();
+  renderPreviewEditable();
+}
+function clearPreAssign(d, type, ci) {
+  if (!preAssigned[d]) return;
+  const key = _preAssignKey(type, ci);
+  delete preAssigned[d][key];
+  if (!Object.keys(preAssigned[d]).length) delete preAssigned[d];
+  saveState();
+  renderPreviewEditable();
+}
+
+// ===== Roster drag/drop edit =====
+function onDragStartCell(e, d, type, ci) {
+  if (!storedRoster) return;
+  const row = storedRoster.find(r => r.d === d);
+  if (!row) return;
+  const name = type === 'duty' ? row.duty : type === 'waiting' ? row.waiting : row.clinics[ci];
+  if (!name) { e.preventDefault(); return; }
+  draggedName = name;
+  dragSourceCell = { d, type, ci: ci != null ? parseInt(ci) : null };
+  draggedClinic = null;
+  e.dataTransfer.effectAllowed = 'move';
+}
+function onDragEndCell(e) {
+  draggedName = null; dragSourceCell = null;
+}
+function onDragOverCell(e) {
+  if (!draggedName) return;
+  e.preventDefault(); e.currentTarget.classList.add('drag-over-cell');
+}
+function onDragLeaveCell(e) { e.currentTarget.classList.remove('drag-over-cell'); }
+function onDropCell(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over-cell');
+  if (!draggedName || !storedRoster) return;
+  const td = e.currentTarget, d = td.dataset.d, type = td.dataset.type;
+  const ci = td.dataset.ci != null ? parseInt(td.dataset.ci) : null;
+  const row = storedRoster.find(r => r.d === d);
+  if (!row) { draggedName = null; dragSourceCell = null; return; }
+
+  // ターゲットの現在値を取得
+  const prevName =
+    type === 'duty'           ? (row.duty||'') :
+    type === 'nichoku'        ? (row.nichoku||'') :
+    type === 'waiting'        ? (row.waiting||'') :
+    type === 'clinic-nichoku' ? ((row.clinicsNichoku && row.clinicsNichoku[ci]) || '') :
+    (row.clinics[ci]||'');
+
+  // セル→セルのドラッグ: ソースセルにターゲットの旧値を入れて入れ替え
+  if (dragSourceCell) {
+    const srcRow = storedRoster.find(r => r.d === dragSourceCell.d);
+    if (srcRow) {
+      if      (dragSourceCell.type === 'duty')           srcRow.duty = prevName;
+      else if (dragSourceCell.type === 'nichoku')        srcRow.nichoku = prevName;
+      else if (dragSourceCell.type === 'waiting')        srcRow.waiting = prevName;
+      else if (dragSourceCell.type === 'clinic')         srcRow.clinics[dragSourceCell.ci] = prevName;
+      else if (dragSourceCell.type === 'clinic-nichoku') {
+        if (!srcRow.clinicsNichoku) srcRow.clinicsNichoku = {};
+        srcRow.clinicsNichoku[dragSourceCell.ci] = prevName;
+      }
+    }
+  }
+
+  // ターゲットセルに新しい名前を設定
+  if      (type === 'duty')           row.duty = draggedName;
+  else if (type === 'nichoku')        row.nichoku = draggedName;
+  else if (type === 'waiting')        row.waiting = draggedName;
+  else if (type === 'clinic')         row.clinics[ci] = draggedName;
+  else if (type === 'clinic-nichoku') {
+    if (!row.clinicsNichoku) row.clinicsNichoku = {};
+    row.clinicsNichoku[ci] = draggedName;
+  }
+
+  draggedName = null; dragSourceCell = null;
+  renderRosterFromStored(); saveState();
+}
+
+// ===== Scheduling =====
+function computeRoster() {
+  if (!names.length||!currentDates.length) return null;
+
+  const dutyCountsWD = {};  // name -> 平日当直回数
+  const dutyCountsWE = {};  // name -> 土日祝当直回数
+  const clinicCounts = {};  // name -> {colLabel: count}
+  const waitingCounts = {};
+  // オンコール1..3 用カウント: name -> { 1: count, 2: count, 3: count }
+  const onCallCounts = {};
+  // 副直1..3 用カウント: name -> { 1: count, 2: count, 3: count }
+  const subDutyCounts = {};
+  names.forEach(n => {
+    dutyCountsWD[n]=0; dutyCountsWE[n]=0; clinicCounts[n]={}; waitingCounts[n]=0;
+    onCallCounts[n] = {};
+    subDutyCounts[n] = {};
+  });
+
+  const getMaxDutyWD = (name) => {
+    const g = getGroupById(nameGroups[name]);
+    if (!g) return 999;
+    const m = g.maxDutyWD;
+    return (m !== undefined && m !== null) ? m : 999;
+  };
+  const getMaxDutyWE = (name) => {
+    const g = getGroupById(nameGroups[name]);
+    if (!g) return 999;
+    const m = g.maxDutyWE;
+    return (m !== undefined && m !== null) ? m : 999;
+  };
+
+  const getMaxWaiting = (name) => {
+    // 旧:待機。現行は常に 999(事実上無制限)
+    return 999;
+  };
+  // オンコール (idx は 1..3)。未設定は 0 = 割当対象外 (UI表示の 0 と挙動を一致)
+  const getMaxOnCall = (name, idx) => {
+    const g = getGroupById(nameGroups[name]);
+    if (!g || !g.maxOnCall) return 0;
+    const m = g.maxOnCall[idx];
+    return (m !== undefined && m !== null) ? m : 0;
+  };
+  // 副直 (idx は 1..3)。未設定は 0 扱い
+  const getMaxSubDuty = (name, idx) => {
+    const g = getGroupById(nameGroups[name]);
+    if (!g || !g.maxSubDuty) return 0;
+    const m = g.maxSubDuty[idx];
+    return (m !== undefined && m !== null) ? m : 0;
+  };
+
+  // 外勤合計（グループ内均等用）
+  const getClinicTotal = (name) =>
+    Object.values(clinicCounts[name]).reduce((s,v) => s+v, 0);
+
+  // グループIDを返す
+  const getGid = (name) => nameGroups[name] || groups[0]?.id;
+
+  // 候補者リストをソート: P2=グループ内均等(回数), P3=グループ間均等(消化率)
+  // その担当者の全カテゴリ合計回数 (平日当直+土日祝当直+オンコール全列+副直全列)
+  const getTotalAssignCount = (n) => {
+    let total = (dutyCountsWD[n]||0) + (dutyCountsWE[n]||0);
+    Object.values(onCallCounts[n]  || {}).forEach(v => total += (v||0));
+    Object.values(subDutyCounts[n] || {}).forEach(v => total += (v||0));
+    return total;
+  };
+
+  const sortByFairness = (eligible, counts, getMax) => {
+    // 候補者ごとの消化率
+    const ratio = (n) => {
+      const mx = getMax(n);
+      return (mx > 0 && mx < 999) ? counts[n] / mx : counts[n];
+    };
+    // グループごとの平均消化率（候補者のみで計算）
+    const groupAvg = {};
+    groups.forEach(g => {
+      const mem = eligible.filter(n => getGid(n) === g.id);
+      if (!mem.length) return;
+      groupAvg[g.id] = mem.reduce((s, n) => s + ratio(n), 0) / mem.length;
+    });
+
+    eligible.sort((a, b) => {
+      const ga = getGid(a), gb = getGid(b);
+      if (ga === gb) {
+        // P2: 同グループ内は「全カテゴリ合計回数」を最優先で均等化し、
+        //     同数ならカテゴリ別回数で比較
+        const td = getTotalAssignCount(a) - getTotalAssignCount(b);
+        if (td !== 0) return td;
+        return counts[a] - counts[b];
+      }
+      // P3: 異グループ → グループ平均消化率が低いグループを優先
+      const ra = groupAvg[ga] ?? 0, rb = groupAvg[gb] ?? 0;
+      if (Math.abs(ra - rb) > 0.001) return ra - rb;
+      // 最後に合計回数で微調整
+      const td = getTotalAssignCount(a) - getTotalAssignCount(b);
+      if (td !== 0) return td;
+      return counts[a] - counts[b];
+    });
+  };
+
+  // ── 時間ベース休息管理 ──
+  // 各担当者の次稼働可能時刻(絶対ms)。初期は -Infinity = いつでも可
+  const availableFrom = {};
+  names.forEach(n => { availableFrom[n] = -Infinity; });
+
+  const dayStartMs = (d) => new Date(d+'T00:00:00').getTime();
+
+  // 指定バンドの勤務時間帯を ms で返す (未定義なら null)
+  const bandTimes = (d, band) => {
+    const def = BAND_DEFAULTS[band];
+    if (!def) return null;
+    const base = dayStartMs(d);
+    return { startMs: base + def.startMin*60000, endMs: base + def.endMin*60000 };
+  };
+
+  // 列ラベルから回復時間(h)を取得。ユーザー入力優先、なければバンドデフォルト、さらになければ 0
+  const getRecoveryH = (label, band) => {
+    if (recoveryData[label] != null && !isNaN(recoveryData[label])) return recoveryData[label];
+    const def = BAND_DEFAULTS[band];
+    return def ? def.recovery : 0;
+  };
+
+  // 勤務終了後の再稼働可能時刻を計算
+  const availAfter = (endMs, recoveryH) => endMs + recoveryH*3600000;
+
+  // 候補判定: その日その時刻の勤務に入れるか (availableFrom を尊重)
+  const canAssignAt = (name, startMs) => availableFrom[name] <= startMs;
+
+  // 割当完了時の更新
+  const registerAssign = (name, endMs, recoveryH) => {
+    const avail = availAfter(endMs, recoveryH);
+    if (avail > availableFrom[name]) availableFrom[name] = avail;
+  };
+
+  return currentDates.map(d => {
+    const dt = new Date(d+'T00:00:00'), w = dt.getDay();
+    const isWeekend = w===0||w===6;
+    const isHolidayDay = !!holidayDates[d];
+    const isWE = isWeekend || isHolidayDay;  // 土日祝フラグ
+    const dutyCounts = isWE ? dutyCountsWE : dutyCountsWD;
+    const getMaxDuty = isWE ? getMaxDutyWE : getMaxDutyWD;
+    const onDuty = names.filter(n => gridData[n]&&gridData[n][d]==='○');
+    const assignedToday = new Set();
+    const preDay = preAssigned[d] || {};
+
+    // ── 段階的フォールバック付き候補選出 ──
+    // Tier1: 時間制約+上限を両方満たす (通常)
+    // Tier2: 時間制約を緩和 (ハシゴ/連続勤務を許容) ただし上限は守る
+    // Tier3: 上限も超過 (勤務者不足時の最終手段)。ただし上限=0 は「割当対象外」として厳格に守る
+    const pickWithFallback = (baseCandidates, withinMax, countsRef, maxFn, startMs) => {
+      let pool = baseCandidates.filter(n => withinMax(n) && (startMs == null || canAssignAt(n, startMs)));
+      if (!pool.length) pool = baseCandidates.filter(withinMax);
+      if (!pool.length) pool = baseCandidates.filter(n => !maxFn || maxFn(n) > 0);
+      if (!pool.length) return '';
+      shuffle(pool);
+      sortByFairness(pool, countsRef, maxFn);
+      return pool[0];
+    };
+
+    // ── 当直/日直 ──
+    let duty = '';
+    let nichoku = '';
+    const dutyShift     = bandTimes(d, '当直');
+    const nichokuShift  = bandTimes(d, '日直');
+    const dutyRecovH    = getRecoveryH(COLS[0].label, '当直');
+    const nichokuRecovH = getRecoveryH(COLS[0].label, '日直');
+
+    const assignDuty = (preVal, shift, recovH) => {
+      let chosen = preVal;
+      if (!chosen) {
+        const base = onDuty.filter(n => !assignedToday.has(n));
+        chosen = pickWithFallback(
+          base,
+          (n) => dutyCounts[n] < getMaxDuty(n),
+          dutyCounts,
+          getMaxDuty,
+          shift ? shift.startMs : null
+        );
+      }
+      if (!chosen) return '';
+      dutyCounts[chosen] = (dutyCounts[chosen]||0) + 1;
+      assignedToday.add(chosen);
+      if (shift) registerAssign(chosen, shift.endMs, recovH);
+      return chosen;
+    };
+
+    if (dutyOpen[d] !== '✕') {
+      duty = assignDuty(preDay.duty, dutyShift, dutyRecovH);
+    }
+    if (isSplitAt(d, 'duty') && dutyOpenNichoku[d] !== '✕') {
+      nichoku = assignDuty(preDay.nichoku, nichokuShift, nichokuRecovH);
+    }
+
+    // 待機列は廃止 (互換保持のため空で返す)
+    const waiting = '';
+
+    // ── 外勤 / 副直 / オンコール列 ──
+    let onCallSeq = 0;
+    let subDutySeq = 0;
+    const clinics = {};
+    const clinicsNichoku = {};
+    COLS.slice(1).forEach((col,ci) => {
+      const preKey = `clinic_${ci}`;
+      const isOnCallCol  = !!col.isOnCall;
+      const isSubdutyCol = !!col.isSubduty;
+      if (isSubdutyCol) subDutySeq++;
+      if (isOnCallCol)  onCallSeq++;
+
+      // 列の勤務時間・回復時間 (副直/オンコールは未指定なら「当直」扱い)
+      const bandName = colBand[ci] || ((isOnCallCol || isSubdutyCol) ? '当直' : '');
+      const shift = bandTimes(d, bandName);
+      const recovH = getRecoveryH(col.label, bandName);
+
+      // ----- 副直列 / オンコール列 (共通構造) -----
+      if (isOnCallCol || isSubdutyCol) {
+        const counts  = isOnCallCol ? onCallCounts : subDutyCounts;
+        const maxFn   = isOnCallCol ? getMaxOnCall : getMaxSubDuty;
+        const idx     = isOnCallCol ? onCallSeq    : subDutySeq;
+        const assignOne = (preVal, useShift, useRecov) => {
+          let chosen = preVal;
+          if (!chosen) {
+            const base = onDuty.filter(n =>
+              !assignedToday.has(n) &&
+              // 土日祝当直の上限が 0 の人は、土日祝のオンコール/副直にも振り分けない
+              !(isWE && getMaxDutyWE(n) === 0)
+            );
+            const countsFlat = {};
+            base.forEach(n => { countsFlat[n] = counts[n][idx]||0; });
+            chosen = pickWithFallback(
+              base,
+              (n) => (counts[n][idx]||0) < maxFn(n, idx),
+              countsFlat,
+              (n) => maxFn(n, idx),
+              useShift ? useShift.startMs : null
+            );
+          }
+          if (!chosen) return '';
+          assignedToday.add(chosen);
+          counts[chosen][idx] = (counts[chosen][idx]||0) + 1;
+          if (useShift) registerAssign(chosen, useShift.endMs, useRecov);
+          return chosen;
+        };
+        const touOpen = !slotData[d] || slotData[d][ci] !== '✕';
+        if (touOpen) clinics[ci] = assignOne(preDay[preKey], shift, recovH);
+        if (isSplitAt(d, preKey)) {
+          const nichokuOpen = !slotDataNichoku[d] || slotDataNichoku[d][ci] !== '✕';
+          if (nichokuOpen) {
+            const nichokuKey = `clinic_${ci}_nichoku`;
+            const nShift = bandTimes(d, '日直');
+            const nRecov = getRecoveryH(col.label, '日直');
+            clinicsNichoku[ci] = assignOne(preDay[nichokuKey], nShift, nRecov);
+          }
+        }
+        return;
+      }
+
+      // ----- 通常の外勤列 -----
+      if (preDay[preKey]) {
+        const preChosen = preDay[preKey];
+        clinics[ci] = preChosen;
+        clinicCounts[preChosen][col.label] = (clinicCounts[preChosen][col.label]||0)+1;
+        assignedToday.add(preChosen);
+        if (shift) registerAssign(preChosen, shift.endMs, recovH);
+        return;
+      }
+      if (!slotData[d] || slotData[d][ci] !== '○') return;
+      const base = onDuty.filter(n =>
+        !assignedToday.has(n) &&
+        nameOutsides[n] && nameOutsides[n].includes(col.label)
+      );
+      const clinicTotals = {};
+      base.forEach(n => { clinicTotals[n] = getClinicTotal(n); });
+      const chosen = pickWithFallback(
+        base,
+        () => true,       // 外勤は回数上限なし
+        clinicTotals,
+        () => 999,
+        shift ? shift.startMs : null
+      );
+      if (!chosen) return;
+      clinics[ci] = chosen;
+      clinicCounts[chosen][col.label] = (clinicCounts[chosen][col.label]||0)+1;
+      assignedToday.add(chosen);
+      if (shift) registerAssign(chosen, shift.endMs, recovH);
+    });
+
+    return { d, dt, w, isWeekend, duty, nichoku, waiting, clinics, clinicsNichoku };
+  });
+}
+
+function generateRoster() {
+  if (!names.length)        { alert('担当者を追加してください'); return; }
+  if (!currentDates.length) { alert('「グリッドを更新」で日付を設定してください'); return; }
+  storedRoster = computeRoster();
+  renderRosterFromStored();
+  saveState();
+  document.getElementById('preview-btn').style.display = 'inline-flex';
+  switchTab('roster');
+}
+
+function renderRosterFromStored() {
+  if (!storedRoster) return;
+  const data = storedRoster;
+  const firstDt = data[0].dt, lastDt = data[data.length-1].dt;
+  const m1 = firstDt.getMonth()+1, m2 = lastDt.getMonth()+1;
+  const monthLabel = m1===m2 ? `${m1}月` : `${m1}〜${m2}月`;
+
+  let html = '<table class="roster-table"><thead><tr>';
+  html += `<th>${monthLabel}</th><th>曜日</th>`;
+  html += `<th class="th-clinic" style="min-width:60px;padding:4px 6px;">
+    <input type="text" class="col-header-input" value="${esc(COLS[0].label)}"
+      size="${approxInputSize(COLS[0].label)}"
+      oninput="autoSizeHeaderInput(this)"
+      draggable="false"
+      onchange="renameColumn(0,this.value)"
+      onkeydown="if(event.key==='Enter')this.blur();"
+      onclick="event.stopPropagation();"
+      onmousedown="event.stopPropagation();"
+      ondragstart="event.preventDefault();event.stopPropagation();">
+  </th>`;
+  if (false /* 待機列は廃止 */) html += `<th style="min-width:50px;background:#fef9c3;color:#a16207;">待機</th>`;
+  COLS.slice(1).forEach((col,ci) => {
+    const colsIdx = ci + 1;
+    html += `<th class="th-clinic" draggable="true"
+      ondragstart="onDragStartClinic(event,'${escQ(col.label)}',${ci})"
+      ondragover="onDragOverColHeader(event,${ci})"
+      ondragleave="onDragLeaveColHeader(event)"
+      ondrop="onDropOnColHeader(event,${ci})"
+      style="min-width:50px;padding:4px 18px 4px 7px;position:sticky;top:0;z-index:3;">
+      <input type="text" class="col-header-input" value="${esc(col.label)}"
+        size="${approxInputSize(col.label)}"
+        oninput="autoSizeHeaderInput(this)"
+        draggable="false"
+        onchange="renameColumn(${colsIdx},this.value)"
+        onkeydown="if(event.key==='Enter')this.blur();"
+        onclick="event.stopPropagation();"
+        onmousedown="event.stopPropagation();"
+        ondragstart="event.preventDefault();event.stopPropagation();">
+      <button class="th-del" onclick="deleteColumn(${ci})" title="列を削除">×</button>
+    </th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  // 勤務帯行
+  html += `<tr><td style="font-weight:bold;white-space:nowrap;padding:3px 6px;background:#f8fafc;">勤務帯</td><td></td>`;
+  html += `<td></td>`;
+  if (false /* 待機列は廃止 */) html += `<td style="background:#fef9c3;"></td>`;
+  COLS.slice(1).forEach((col,ci) => {
+    if (col.isOnCall || col.isSubduty) {
+      html += `<td style="color:#94a3b8;font-size:10px;text-align:center;">—</td>`;
+      return;
+    }
+    const v = colBand[ci] || '';
+    const cls = v ? ` band-${v}` : '';
+    html += `<td class="colband-cell${cls}" onclick="toggleColBand(${ci})" title="クリックで勤務帯切替">${v}</td>`;
+  });
+  html += '</tr>';
+
+  html += `<tr class="biko-row"><td style="font-weight:bold;padding:3px 6px;">勤務時間</td><td></td>`;
+  html += `<td><input class="biko-input" type="text" value="${esc(bikoData[COLS[0].label]||'')}" oninput="bikoData['${escQ(COLS[0].label)}']=this.value"></td>`;
+  COLS.slice(1).forEach(col => {
+    html += `<td><input class="biko-input" type="text" value="${esc(bikoData[col.label]||'')}" oninput="bikoData['${escQ(col.label)}']=this.value"></td>`;
+  });
+  html += '</tr>';
+
+  // 重い外勤（当直/日当直バンド）の日付マップを事前計算
+  // heavyDates[name] = Set of dates where they had heavy clinic
+  const heavyDates = {};
+  data.forEach(({ d: dd, clinics: cls }) => {
+    COLS.slice(1).forEach((col, ci) => {
+      const band = colBand[ci] || '';
+      if ((band === '当直' || band === '日当直') && cls[ci]) {
+        if (!heavyDates[cls[ci]]) heavyDates[cls[ci]] = new Set();
+        heavyDates[cls[ci]].add(dd);
+      }
+    });
+  });
+  const isHeavyNextDay = (name, d) => {
+    if (!name || !heavyDates[name]) return false;
+    const prev = new Date(d + 'T00:00:00');
+    prev.setDate(prev.getDate() - 1);
+    const prevD = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}-${String(prev.getDate()).padStart(2,'0')}`;
+    return heavyDates[name].has(prevD);
+  };
+
+  data.forEach((row) => {
+    const { d, dt, w, isWeekend, duty, waiting, clinics } = row;
+    const nichoku = row.nichoku || '';
+    const isSat=w===6, isSun=w===0, isFri=w===5;
+    const isHoliday = !!holidayDates[d];
+    const rowCls = isHoliday?'row-holiday':isSat?'row-sat':isSun?'row-sun':'';
+    const wdCls  = isSun?'wd-sun':isSat?'wd-sat':'';
+    html += `<tr class="${rowCls}">`;
+    html += `<td class="td-date" onclick="toggleHoliday('${d}')" title="クリックで祝日切替">${dt.getDate()}</td>`;
+    html += `<td class="td-wd ${wdCls}">${WD[w]}</td>`;
+    // 競合チェック: 同日重複 or 勤務チェック✕ or 重い外勤の翌日
+    const allAssigned = [
+      duty,
+      isSplitAt(d, 'duty') ? nichoku : null,
+      false /* 待機列は廃止 */ ? waiting : null,
+      ...Object.values(clinics),
+      ...Object.values(row.clinicsNichoku || {})
+    ].filter(Boolean);
+    const seenDay = {}, dupDay = new Set();
+    allAssigned.forEach(n => { if (seenDay[n]) dupDay.add(n); seenDay[n] = true; });
+    const conflict = (name) => name && (
+      dupDay.has(name) ||
+      (gridData[name] && gridData[name][d] === '✕') ||
+      isHeavyNextDay(name, d)
+    );
+    const cellCls = (name, extra='') => {
+      if (!name && extra === 'unassigned') return ' cell-unassigned';
+      if (conflict(name)) return ' cell-conflict';
+      return '';
+    };
+    // 【無料プラン】セル間の医師移動は不可。ドロップ(名前タグからの割当)は許可。
+    const draggableAttrs = (name, type, ci='') => '';
+
+    const dutyCtx = `oncontextmenu="event.preventDefault();toggleSplitCell('${d}','duty')" title="右クリックで日直/当直に分割"`;
+    if (isSplitAt(d, 'duty')) {
+      const nWarn = !nichoku ? ' cell-unassigned' : '';
+      const dWarn = !duty    ? ' cell-unassigned' : '';
+      html += `<td class="duty-cell-split" ${dutyCtx}>
+        <div class="duty-split">
+          <div class="duty-sub drop-cell${nWarn}${cellCls(nichoku)}" data-d="${d}" data-type="nichoku"
+            ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">
+            <span class="sub-label">日直</span>
+            ${nichoku ? `<span class="sub-value">${esc(nichoku)}</span>` : ''}
+          </div>
+          <div class="duty-sub drop-cell${dWarn}${cellCls(duty)}" data-d="${d}" data-type="duty"
+            ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">
+            <span class="sub-label">当直</span>
+            ${duty ? `<span class="sub-value">${esc(duty)}</span>` : ''}
+          </div>
+        </div>
+      </td>`;
+    } else {
+      const dutyWarn = !duty ? ' cell-unassigned' : '';
+      html += `<td class="drop-cell${dutyWarn}${cellCls(duty)}" data-d="${d}" data-type="duty" ${dutyCtx}
+        ${draggableAttrs(duty,'duty')}
+        ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">${esc(duty)}</td>`;
+    }
+    if (false /* 待機列は廃止 */) {
+      const waitWarn = !waiting ? ' cell-unassigned' : '';
+      html += `<td class="drop-cell${waitWarn}${cellCls(waiting)}" data-d="${d}" data-type="waiting"
+        style="${waiting&&!conflict(waiting)?'background:#fefce8;':''}"
+        ${draggableAttrs(waiting,'waiting')}
+        ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">${esc(waiting||'')}</td>`;
+    }
+    COLS.slice(1).forEach((col,ci) => {
+      const slotOpen = slotData[d] && slotData[d][ci] === '○';
+      const splittable = col.isOnCall || col.isSubduty;
+      const clinicCtx = splittable
+        ? `oncontextmenu="event.preventDefault();toggleSplitCell('${d}','clinic_${ci}')" title="右クリックで日直/当直に分割"`
+        : '';
+      if (splittable && isSplitAt(d, `clinic_${ci}`)) {
+        const nichokuCli = (row.clinicsNichoku && row.clinicsNichoku[ci]) || '';
+        const nWarn = !nichokuCli ? ' cell-unassigned' : '';
+        const dWarn = !clinics[ci] ? ' cell-unassigned' : '';
+        html += `<td class="duty-cell-split" ${clinicCtx}>
+          <div class="duty-split">
+            <div class="duty-sub drop-cell${nWarn}${cellCls(nichokuCli)}" data-d="${d}" data-type="clinic-nichoku" data-ci="${ci}"
+              ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">
+              <span class="sub-label">日直</span>
+              ${nichokuCli ? `<span class="sub-value">${esc(nichokuCli)}</span>` : ''}
+            </div>
+            <div class="duty-sub drop-cell${dWarn}${cellCls(clinics[ci])}" data-d="${d}" data-type="clinic" data-ci="${ci}"
+              ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">
+              <span class="sub-label">当直</span>
+              ${clinics[ci] ? `<span class="sub-value">${esc(clinics[ci])}</span>` : ''}
+            </div>
+          </div>
+        </td>`;
+      } else {
+        const clinicWarn = slotOpen && !clinics[ci] ? ' cell-unassigned' : '';
+        html += `<td class="drop-cell${clinicWarn}${cellCls(clinics[ci])}" data-d="${d}" data-type="clinic" data-ci="${ci}" ${clinicCtx}
+          ${draggableAttrs(clinics[ci],'clinic',ci)}
+          ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">${esc(clinics[ci]||'')}</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('roster-view').innerHTML = html;
+  renderSummary();
+}
+
+function renderSummary() {
+  const panel = document.getElementById('summary-panel');
+  if (!storedRoster||!names.length) return;
+
+  const dutyWDCnt = {}, dutyWECnt = {}, clinicCnt = {};
+  const subDutyCols = COLS.filter(c => c.isSubduty);
+  const onCallCols  = COLS.filter(c => c.isOnCall);
+  const subDutyCnts = subDutyCols.map(() => ({}));
+  const onCallCnts  = onCallCols.map(() => ({}));
+
+  storedRoster.forEach(row => {
+    const { d, w, duty, nichoku, clinics, clinicsNichoku } = row;
+    const isWE = (w===0||w===6) || !!holidayDates[d];
+    [duty, nichoku].forEach(n => {
+      if (!n) return;
+      if (isWE) dutyWECnt[n] = (dutyWECnt[n]||0)+1;
+      else      dutyWDCnt[n] = (dutyWDCnt[n]||0)+1;
+    });
+    let subDutySeq = 0, onCallSeq = 0;
+    COLS.slice(1).forEach((col, ci) => {
+      if (col.isSubduty) {
+        const pool = subDutyCnts[subDutySeq];
+        const v1 = clinics[ci]; if (v1) pool[v1] = (pool[v1]||0)+1;
+        const v2 = clinicsNichoku && clinicsNichoku[ci]; if (v2) pool[v2] = (pool[v2]||0)+1;
+        subDutySeq++;
+      } else if (col.isOnCall) {
+        const pool = onCallCnts[onCallSeq];
+        const v1 = clinics[ci]; if (v1) pool[v1] = (pool[v1]||0)+1;
+        const v2 = clinicsNichoku && clinicsNichoku[ci]; if (v2) pool[v2] = (pool[v2]||0)+1;
+        onCallSeq++;
+      } else {
+        const v = clinics[ci];
+        if (v) clinicCnt[v] = (clinicCnt[v]||0)+1;
+      }
+    });
+  });
+
+  const ordered = getOrderedNames();
+  let html = '<h3>当直集計</h3>';
+  const totalCols = 4 + subDutyCols.length + onCallCols.length;
+  let thead = '<tr><th>名前</th><th>平日</th><th>土日祝</th>';
+  subDutyCols.forEach(col => { thead += `<th title="${esc(col.label)}">${esc(col.label)}</th>`; });
+  onCallCols.forEach(col => { thead += `<th title="${esc(col.label)}">${esc(col.label)}</th>`; });
+  thead += '<th>外勤</th></tr>';
+  html += `<table class="summary-table"><thead>${thead}</thead><tbody>`;
+
+  let lastGid = null;
+  ordered.forEach(n => {
+    const gid = nameGroups[n]||groups[0]?.id;
+    if (gid !== lastGid) {
+      const gc = getGroupById(gid);
+      if (gc) html += `<tr><td colspan="${totalCols}" style="background:${gc.color}22;font-weight:700;font-size:10px;padding:2px 5px;color:${gc.color};border-left:3px solid ${gc.color};">${esc(gc.label)}</td></tr>`;
+      lastGid = gid;
+    }
+    const wd = dutyWDCnt[n]||'', we = dutyWECnt[n]||'';
+    let row = `<tr><td title="${esc(n)}">${esc(n)}</td><td>${wd}</td><td>${we}</td>`;
+    subDutyCnts.forEach(cnt => { row += `<td>${cnt[n]||''}</td>`; });
+    onCallCnts.forEach(cnt => { row += `<td>${cnt[n]||''}</td>`; });
+    row += `<td>${clinicCnt[n]||''}</td></tr>`;
+    html += row;
+  });
+  html += '</tbody></table>';
+  panel.innerHTML = html;
+}
+
+// ===== Excel =====
+
+
+function exportExcel() {
+  if (!names.length||!currentDates.length) return;
+  const data = storedRoster || computeRoster();
+  if (!data) return;
+  const firstDt = data[0].dt;
+
+  const ws = {};
+  let maxRow = 0, maxCol = 0;
+  const colMaxLen = {}; // 列ごとの最大表示幅 (CJK=2, ASCII=1)
+  const FONT_SIZE = 13;  // Excelの既定11より1段大きく
+
+  const BDR = { style: 'thin', color: { rgb: '888888' } };
+  const BORDERS = { top: BDR, bottom: BDR, left: BDR, right: BDR };
+  const BAND_COLORS = { '外来':'DBEAFE', '日直':'FEF9C3', '当直':'EDE9FE', '日当直':'FFEDD5' };
+
+  // 文字列の表示幅(CJK は 2、ASCII は 1)を計算
+  const visualWidth = (s) => {
+    const str = String(s ?? '');
+    let w = 0;
+    for (const ch of str) w += ch.charCodeAt(0) > 127 ? 2 : 1;
+    return w;
+  };
+
+  function setCell(r, c, v, bg, bold, halign) {
+    const addr = XLSX.utils.encode_cell({ r, c });
+    const font = { sz: FONT_SIZE };
+    if (bold) font.bold = true;
+    const s = {
+      border: BORDERS,
+      alignment: { horizontal: halign||'center', vertical:'center', wrapText:false },
+      font
+    };
+    if (bg) s.fill = { patternType:'solid', fgColor:{ rgb: bg } };
+    ws[addr] = { v: (v===undefined||v===null)?'':v, t: typeof v==='number'?'n':'s', s };
+    if (r > maxRow) maxRow = r;
+    if (c > maxCol) maxCol = c;
+    // 列幅自動計算用: その列の最長文字幅を記録
+    const w = visualWidth(v);
+    if (!colMaxLen[c] || w > colMaxLen[c]) colMaxLen[c] = w;
+  }
+
+  const taikiOffset = false /* 待機列は廃止 */ ? 1 : 0;
+
+  // 行0: ヘッダー
+  setCell(0, 0, `${firstDt.getMonth()+1}月`, 'F1F5F9', true);
+  setCell(0, 1, '曜日',           'F1F5F9', true);
+  setCell(0, 2, COLS[0].label,   'F1F5F9', true);
+  if (false /* 待機列は廃止 */) setCell(0, 3, '待機', 'FEF9C3', true);
+  COLS.slice(1).forEach((col, ci) => setCell(0, 3+taikiOffset+ci, col.label, 'F1F5F9', true));
+
+  // 行1: 勤務帯
+  setCell(1, 0, '勤務帯', 'F8FAFC', true, 'left');
+  setCell(1, 1, '', 'F8FAFC'); setCell(1, 2, '', 'F8FAFC');
+  if (false /* 待機列は廃止 */) setCell(1, 3, '', 'FEF9C3');
+  COLS.slice(1).forEach((col, ci) => {
+    const v = colBand[ci]||'';
+    setCell(1, 3+taikiOffset+ci, v, BAND_COLORS[v]||'F8FAFC', !!v);
+  });
+
+  // 行2: 勤務時間
+  setCell(2, 0, '勤務時間', 'FFFDE7', true, 'left');
+  setCell(2, 1, '', 'FFFDE7');
+  setCell(2, 2, bikoData[COLS[0].label]||'', 'FFFDE7', false, 'left');
+  if (false /* 待機列は廃止 */) setCell(2, 3, bikoData['待機']||'', 'FEFCE8', false, 'left');
+  COLS.slice(1).forEach((col, ci) => setCell(2, 3+taikiOffset+ci, bikoData[col.label]||'', 'FFFDE7', false, 'left'));
+
+  // 行3〜: データ
+  data.forEach((_row, i) => {
+    const { d, dt, w, duty, waiting, clinics } = _row;
+    const nichoku = _row.nichoku || '';
+    const r = 3 + i;
+    const isHoliday = !!holidayDates[d];
+    const isSat = w===6, isSun = w===0;
+    let rowBg = null, dateBg = null;
+    if      (isHoliday) { rowBg='FCE4EC'; dateBg='F48FB1'; }
+    else if (isSat)     { rowBg='DAEEF3'; dateBg='C8E6F0'; }
+    else if (isSun)     { rowBg='FDE9D9'; dateBg='F9C9AC'; }
+
+    setCell(r, 0, dt.getDate(),        dateBg, true);
+    setCell(r, 1, WD[w],               rowBg);
+    // 分割日は「日直／当直」を1セルに併記
+    const dutyCell = splitDays[d]
+      ? (nichoku && duty ? `${nichoku}／${duty}` : (nichoku || duty || ''))
+      : (duty || '');
+    setCell(r, 2, dutyCell, rowBg);
+    if (false /* 待機列は廃止 */) setCell(r, 3, waiting||'', rowBg ? rowBg : 'FEFCE8');
+    COLS.slice(1).forEach((col, ci) => {
+      // 副直/オンコール列で分割されている日は「日直/当直」を1セル内に併記
+      const splittable = col.isOnCall || col.isSubduty;
+      if (splittable && isSplitAt(d, `clinic_${ci}`)) {
+        const nich = (_row.clinicsNichoku && _row.clinicsNichoku[ci]) || '';
+        const tou  = clinics[ci] || '';
+        const v = nich && tou ? `${nich}/${tou}` : (nich || tou || '');
+        setCell(r, 3+taikiOffset+ci, v, rowBg);
+      } else {
+        setCell(r, 3+taikiOffset+ci, clinics[ci]||'', rowBg);
+      }
+    });
+  });
+
+  ws['!ref']  = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:maxRow,c:maxCol} });
+  // 列幅: 各列の最長表示幅 + 余白2文字。最小4・最大30に丸める
+  const colWidths = [];
+  for (let c = 0; c <= maxCol; c++) {
+    const len = colMaxLen[c] || 4;
+    colWidths.push({ wch: Math.max(4, Math.min(30, len + 2)) });
+  }
+  ws['!cols'] = colWidths;
+  // 行高さ: フォントサイズに合わせて少し広げる(20pt)
+  const rowHeights = [];
+  for (let r = 0; r <= maxRow; r++) rowHeights.push({ hpt: 20 });
+  ws['!rows'] = rowHeights;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '当直表');
+  const fileName = `当直表_${firstDt.getFullYear()}${String(firstDt.getMonth()+1).padStart(2,'0')}.xlsx`;
+  // 【無料プラン】30秒広告モーダルを挟んでからダウンロード
+  showAdModalThenDownload(() => XLSX.writeFile(wb, fileName));
+}
+
+// 【無料プラン】30秒広告モーダルを表示 → カウント完了後にコールバック実行
+function showAdModalThenDownload(onComplete) {
+  const modal = document.getElementById('ad-modal');
+  const cdEl  = document.getElementById('ad-countdown');
+  const barEl = document.getElementById('ad-progress');
+  if (!modal || !cdEl || !barEl) { onComplete(); return; }
+
+  const TOTAL = 30; // 秒
+  let elapsed = 0;
+  cdEl.textContent = TOTAL;
+  barEl.style.width = '0%';
+  modal.classList.add('show');
+
+  const timer = setInterval(() => {
+    elapsed++;
+    const remain = TOTAL - elapsed;
+    cdEl.textContent = Math.max(0, remain);
+    barEl.style.width = `${(elapsed / TOTAL) * 100}%`;
+    if (elapsed >= TOTAL) {
+      clearInterval(timer);
+      modal.classList.remove('show');
+      try { onComplete(); } catch(e) { console.error(e); }
+    }
+  }, 1000);
+}
+
+// ===== Tab =====
+function switchTab(tab) {
+  const tabBtn = document.getElementById('tab-excel');
+  if (tabBtn) tabBtn.className = 'tab-btn'+(tab==='excel'?' active':'');
+  const rv = document.getElementById('roster-view');
+  const ev = document.getElementById('excel-view');
+  if (rv) rv.style.display = tab==='roster'?'block':'none';
+  if (ev) ev.style.display = tab==='excel' ?'block':'none';
+}
+function toggleExcelView() {
+  const isExcel = document.getElementById('excel-view').style.display !== 'none';
+  switchTab(isExcel ? 'roster' : 'excel');
+}
+
+// ===== Excel出力プレビュー =====
+function openExcelPreview() {
+  if (!storedRoster || !storedRoster.length) {
+    alert('当直表が生成されていません。「✅作る」を押してください。');
+    return;
+  }
+  renderExcelPreview();
+  // 全体表示モード: 操作パネル・リサイザー・プレビューヘッダー(戻る/プレビューボタン含む)を隠す
+  const ctrl = document.getElementById('control-pane');
+  const rsz  = document.getElementById('resizer');
+  const hdr  = document.getElementById('preview-header');
+  if (ctrl) ctrl.style.display = 'none';
+  if (rsz)  rsz.style.display  = 'none';
+  if (hdr)  hdr.style.display  = 'none';
+  switchTab('excel');
+}
+
+function closeExcelPreview() {
+  // 通常レイアウトに戻す
+  const ctrl = document.getElementById('control-pane');
+  const rsz  = document.getElementById('resizer');
+  const hdr  = document.getElementById('preview-header');
+  if (ctrl) ctrl.style.display = '';
+  if (rsz)  rsz.style.display  = '';
+  if (hdr)  hdr.style.display  = '';
+  switchTab('roster');
+}
+
+function renderExcelPreview() {
+  const data = storedRoster;
+  const view = document.getElementById('excel-view');
+  if (!view || !data || !data.length) return;
+
+  const firstDt = data[0].dt;
+  const monthLabel = `${firstDt.getMonth()+1}月`;
+  const BAND_COLOR = { '外来':'#dbeafe', '日直':'#fef9c3', '当直':'#ede9fe', '日当直':'#ffedd5' };
+  const BAND_TEXT  = { '外来':'#1d4ed8', '日直':'#a16207', '当直':'#6d28d9', '日当直':'#9a3412' };
+
+  const tdRow = (row) => {
+    const { d, dt, w, duty, nichoku, clinics, clinicsNichoku } = row;
+    const isHoliday = !!holidayDates[d];
+    const isSat = w===6, isSun = w===0;
+    let rowBg = '', dateBg = '';
+    if      (isHoliday) { rowBg='#fce4ec'; dateBg='#f48fb1'; }
+    else if (isSat)     { rowBg='#daeef3'; dateBg='#c8e6f0'; }
+    else if (isSun)     { rowBg='#fde9d9'; dateBg='#f9c9ac'; }
+
+    const dutyCell = splitDays[d]
+      ? ((nichoku||'') && (duty||'') ? `${nichoku}／${duty}` : (nichoku || duty || ''))
+      : (duty || '');
+
+    const clinicCells = COLS.slice(1).map((col, ci) => {
+      const splittable = col.isOnCall || col.isSubduty;
+      let v = '';
+      if (splittable && isSplitAt(d, `clinic_${ci}`)) {
+        const nich = (clinicsNichoku && clinicsNichoku[ci]) || '';
+        const tou  = clinics[ci] || '';
+        v = nich && tou ? `${nich}/${tou}` : (nich || tou || '');
+      } else {
+        v = clinics[ci] || '';
+      }
+      return `<td style="background:${rowBg};">${esc(v)}</td>`;
+    }).join('');
+
+    return `<tr>
+      <td class="ep-date" style="background:${dateBg};">${dt.getDate()}</td>
+      <td style="background:${rowBg};">${WD[w]}</td>
+      <td style="background:${rowBg};">${esc(dutyCell)}</td>
+      ${clinicCells}
+    </tr>`;
+  };
+
+  let html = `
+    <div id="excel-view-toolbar">
+      <button class="btn btn-outline" onclick="closeExcelPreview()">← 編集に戻る</button>
+      <button class="btn btn-success" onclick="exportExcel()">⬇ ダウンロード</button>
+      <span class="ep-hint">ダウンロードを押すと30秒の広告後にExcelファイルが保存されます。</span>
+    </div>
+    <div style="overflow:auto;max-width:100%;">
+      <table class="excel-preview">
+        <thead>
+          <tr>
+            <th>${monthLabel}</th>
+            <th>曜日</th>
+            <th>${esc(COLS[0].label)}</th>
+            ${COLS.slice(1).map(c => `<th>${esc(c.label)}</th>`).join('')}
+          </tr>
+          <tr>
+            <th class="ep-band-head">勤務帯</th>
+            <th class="ep-band-head"></th>
+            <th class="ep-band-head"></th>
+            ${COLS.slice(1).map((c, ci) => {
+              const v = colBand[ci] || '';
+              const bg = BAND_COLOR[v] || '#f8fafc';
+              const fg = BAND_TEXT[v] || 'inherit';
+              return `<th class="ep-band" style="background:${bg};color:${fg};">${esc(v)}</th>`;
+            }).join('')}
+          </tr>
+          <tr>
+            <th class="ep-time-head">勤務時間</th>
+            <th class="ep-time"></th>
+            <th class="ep-time">${esc(bikoData[COLS[0].label] || '')}</th>
+            ${COLS.slice(1).map(c => `<th class="ep-time">${esc(bikoData[c.label] || '')}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map(tdRow).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  view.innerHTML = html;
+}
+
+// ===== State save/load =====
+// =============================================================
+// 状態の永続化
+//   モード: 'cloud' (ログイン中・/api/state にPOST) | 'guest' (localStorage)
+// =============================================================
+let _mode = null;             // 'cloud' | 'guest' | null(未確定)
+const GUEST_MODE_KEY = 'tochoku_guest_mode';
+const GUEST_DATA_KEY = 'tochoku_guest_data';
+let _undoSnapshot = null;     // メモリ上の1ステップundoスナップショット (JSON文字列)
+let _saveTimer = null;        // 保存デバウンスタイマー
+let _isApplyingState = false; // 状態復元中の二重保存防止
+
+// 名前データ + 状態データを1つのJSONに固める
+function _buildStateBlob() {
+  const rosterSave = storedRoster
+    ? storedRoster.map(({d,w,isWeekend,duty,nichoku,waiting,clinics,clinicsNichoku}) =>
+        ({d,w,isWeekend,duty,nichoku,waiting,clinics,clinicsNichoku}))
+    : null;
+  return {
+    // names系
+    groups, names, nameGroups, nameOutsides,
+    // state系 (gridDataはセッション限り、永続化対象外)
+    currentDates, slotData, dutyOpen, bikoData, gakkaiData,
+    holidayDates, colBand, roster: rosterSave, cols: COLS, preAssigned, splitDays,
+    dutyOpenNichoku, slotDataNichoku, recoveryData, workPatterns, dayModes
+  };
+}
+
+// 復元: APIから取得したJSONをグローバル変数に展開
+function _applyStateBlob(s) {
+  if (!s) return;
+  _isApplyingState = true;
+  try {
+    if (s.groups) {
+      groups = s.groups;
+      groups.forEach(g => {
+        const legacy = g.maxDuty ?? 0;
+        if (g.maxDutyWD == null) g.maxDutyWD = legacy;
+        if (g.maxDutyWE == null) g.maxDutyWE = legacy;
+        if (!g.maxOnCall  || typeof g.maxOnCall  !== 'object') g.maxOnCall  = {};
+        if (!g.maxSubDuty || typeof g.maxSubDuty !== 'object') g.maxSubDuty = {};
+        delete g.maxWaiting;
+      });
+      gidSeq = Math.max(0, ...groups.map(g=>parseInt((g.id||'').slice(1))||0)) + 1;
+    }
+    if (s.names)        names = s.names;
+    if (s.nameGroups)   Object.assign(nameGroups, s.nameGroups);
+    if (s.nameOutsides) Object.assign(nameOutsides, s.nameOutsides);
+
+    if (s.cols)         COLS = s.cols;
+    if (s.currentDates) currentDates = s.currentDates;
+    if (s.slotData)     Object.assign(slotData,   s.slotData);
+    if (s.dutyOpen)     Object.assign(dutyOpen,   s.dutyOpen);
+    if (s.bikoData)     Object.assign(bikoData,   s.bikoData);
+    if (s.gakkaiData)   Object.assign(gakkaiData, s.gakkaiData);
+    if (s.holidayDates) Object.assign(holidayDates, s.holidayDates);
+    if (s.colBand)      Object.assign(colBand, s.colBand);
+    if (s.preAssigned)  Object.assign(preAssigned, s.preAssigned);
+    if (s.splitDays)    Object.assign(splitDays, s.splitDays);
+    if (s.dutyOpenNichoku) Object.assign(dutyOpenNichoku, s.dutyOpenNichoku);
+    if (s.slotDataNichoku) Object.assign(slotDataNichoku, s.slotDataNichoku);
+    if (s.recoveryData)    Object.assign(recoveryData, s.recoveryData);
+    if (s.workPatterns)    Object.assign(workPatterns, s.workPatterns);
+    if (s.dayModes)        Object.assign(dayModes, s.dayModes);
+    if (s.roster) {
+      storedRoster = s.roster.map(row => ({...row, dt: new Date(row.d+'T00:00:00')}));
+    }
+  } finally {
+    _isApplyingState = false;
+  }
+}
+
+// API: GET /api/state
+async function _apiLoadState() {
+  if (!window.Clerk || !Clerk.session) return null;
+  try {
+    const token = await Clerk.session.getToken();
+    const res = await fetch('/api/state', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.state || null;
+  } catch (e) {
+    console.error('load state error', e);
+    return null;
+  }
+}
+
+// API: POST /api/state (デバウンス)
+function _apiSaveStateDebounced() {
+  if (_isApplyingState) return; // 復元中は保存しない
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async () => {
+    if (!window.Clerk || !Clerk.session) return;
+    try {
+      const token = await Clerk.session.getToken();
+      const blob = _buildStateBlob();
+      await fetch('/api/state', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ state: blob })
+      });
+    } catch (e) {
+      console.error('save state error', e);
+    }
+  }, 800);
+}
+
+// ゲストモード: localStorage に保存
+function _saveToLocalStorage() {
+  try {
+    localStorage.setItem(GUEST_DATA_KEY, JSON.stringify(_buildStateBlob()));
+  } catch (e) {}
+}
+
+// モードに応じて保存先を切り替え
+function _persist() {
+  if (_mode === 'cloud') _apiSaveStateDebounced();
+  else if (_mode === 'guest') _saveToLocalStorage();
+}
+
+// 互換用: 既存コードからの呼び出しを受ける
+function saveNames() {
+  if (_isApplyingState) return;
+  _persist();
+}
+
+function saveState() {
+  if (_isApplyingState) return;
+  // 1ステップundo: 現在の状態をスナップショットに退避
+  try { _undoSnapshot = JSON.stringify(_buildStateBlob()); } catch(e) {}
+  updateUndoButton();
+  _persist();
+}
+
+// 1ステップundo
+function doUndo() {
+  if (!_undoSnapshot) return;
+  try {
+    const snap = JSON.parse(_undoSnapshot);
+    _undoSnapshot = null;
+    _applyStateBlob(snap);
+    _apiSaveStateDebounced(); // 戻した状態を保存
+    location.reload();        // 描画をクリーンに反映
+  } catch(e) {}
+}
+
+function updateUndoButton() {
+  const btn = document.getElementById('undo-btn');
+  if (!btn) return;
+  const can = !!_undoSnapshot;
+  btn.disabled = !can;
+  btn.style.opacity = can ? '1' : '.4';
+  btn.style.cursor  = can ? 'pointer' : 'not-allowed';
+}
+
+// 起動時に呼ばれる: APIから状態を取得して展開、UIを再描画
+async function loadStateFromCloud() {
+  const s = await _apiLoadState();
+  if (!s) return false;
+  _applyStateBlob(s);
+  if (currentDates.length) {
+    const sd = document.getElementById('start-date');
+    const ed = document.getElementById('end-date');
+    if (sd) sd.value = currentDates[0];
+    if (ed) ed.value = currentDates[currentDates.length-1];
+  }
+  if (storedRoster) {
+    renderRosterFromStored();
+    const pb = document.getElementById('preview-btn');
+    if (pb) pb.style.display = 'inline-flex';
+    switchTab('roster');
+  } else if (currentDates.length) {
+    renderPreviewEditable();
+  }
+  return true;
+}
+
+// 旧来のloadNames/loadStateは互換のため残しているが何もしない
+function loadNames() { /* no-op (cloud版に統一) */ }
+function loadState() { return false; /* 互換用ダミー */ }
+
+// ===== Resizer =====
+(function() {
+  const R=document.getElementById('resizer'), T=document.getElementById('preview-pane'), B=document.getElementById('control-pane');
+  let sy,sh,bh;
+  R.addEventListener('mousedown', e => {
+    sy=e.clientY; sh=T.offsetHeight; bh=B.offsetHeight;
+    R.classList.add('dragging');
+    document.addEventListener('mousemove',mv);
+    document.addEventListener('mouseup',up);
+    e.preventDefault();
+  });
+  function mv(e){ const dy=e.clientY-sy; T.style.flex='none'; B.style.flex='none'; T.style.height=Math.max(80,sh+dy)+'px'; B.style.height=Math.max(80,bh-dy)+'px'; }
+  function up(){ R.classList.remove('dragging'); document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
+})();
+
+// ===== プロダクトツアー =====
+const TOUR_STEPS = [
+  {
+    target: '.name-add-row',
+    title: 'ステップ1：担当者を登録',
+    body: '名前を入力して「追加」で担当者を登録します。グループは後で選べます。',
+    tip: '💡 名前は何人でも追加できます。',
+    pos: 'bottom'
+  },
+  {
+    target: '#groups-list',
+    title: 'ステップ2：グループと目標回数を設定',
+    body: 'グループごとに「平日当直 / 土日祝当直 / オンコール」の目標回数を設定。担当者名をクリックするとその人の外勤先をチェックで指定できます。',
+    tip: '💡 土日祝=0 にするとオンコールも土日祝に割り当てられません。',
+    pos: 'bottom'
+  },
+  {
+    target: '.date-block',
+    title: 'ステップ3：日付範囲と追加列',
+    body: '開始日・終了日を設定。必要なら「＋オンコールを追加」で当直の横に列を追加(最大3列、追加後に列名を変更可)。最後に「グリッドを更新」を押します。',
+    tip: null,
+    pos: 'bottom'
+  },
+  {
+    target: '#preview-header',
+    title: 'ステップ4：外勤先列を追加・勤務帯を設定',
+    body: 'プレビュー右端の「＋」で外勤先列を追加します。列ヘッダーはドラッグで並び替え、列名もクリックで編集できます。「勤務帯」行をクリックで 外来/日直/当直/日当直 を切替(勤務時間が自動入力)。',
+    tip: null,
+    pos: 'bottom'
+  },
+  {
+    target: '#preview-body',
+    title: 'ステップ5：勤務日を設定',
+    body: '「勤務日」のセルをクリックして、その列の勤務日を追加・設定します。',
+    tip: '💡 当直・オンコールのセルを右クリックで、その日だけ 日直/当直 に分割できます。',
+    pos: 'top'
+  },
+  {
+    target: '#grid-container',
+    title: 'ステップ6：勤務チェック(休み指定)',
+    body: '○=勤務可 / ✕=勤務不可。希望休の日を✕にしてください。担当者名をクリックすると全日を一括で切り替えできます。',
+    tip: null,
+    pos: 'top'
+  },
+  {
+    target: '#action-bar',
+    title: 'ステップ7：作成・調整・エクスポート',
+    body: '作成前に固定したい勤務があれば、担当者タグをドラッグしてセルに置いて登録しておきます。「✅作る」で残りを自動割当。作成後はセル内の名前を直接書き換えて調整できます。完成したら「⬇エクスポート」でExcelにダウンロード。',
+    tip: null,
+    pos: 'top'
+  }
+];
+
+let _tourStep = 0;
+
+function openTour() {
+  _tourStep = 0;
+  // メイン画面の操作をブロック
+  document.getElementById('main').style.pointerEvents = 'none';
+  document.getElementById('title-bar').style.pointerEvents = 'none';
+  document.getElementById('tour-overlay').classList.remove('hidden');
+  document.getElementById('tour-ring').style.display = 'block';
+  _renderTourContent(0);
+  _tourPos(0);
+}
+
+function closeTour() {
+  _clearTourAnim();
+  // メイン画面の操作を復元
+  document.getElementById('main').style.pointerEvents = '';
+  document.getElementById('title-bar').style.pointerEvents = '';
+  document.getElementById('tour-overlay').classList.add('hidden');
+  document.getElementById('tour-ring').style.display = 'none';
+  document.getElementById('tour-tooltip').classList.add('hidden');
+  document.getElementById('tour-arrow').className = '';
+  localStorage.setItem(STORAGE_TUTORIAL, '1');
+}
+
+function tourNext() {
+  if (_tourStep < TOUR_STEPS.length - 1) {
+    _tourStep++;
+    _renderTourContent(_tourStep);
+    _tourPos(_tourStep);
+  } else {
+    closeTour();
+  }
+}
+
+function tourPrev() {
+  if (_tourStep > 0) {
+    _tourStep--;
+    _renderTourContent(_tourStep);
+    _tourPos(_tourStep);
+  }
+}
+
+function _renderTourContent(idx) {
+  const step = TOUR_STEPS[idx];
+  const total = TOUR_STEPS.length;
+  const dots = TOUR_STEPS.map((_, i) => {
+    const cls = i === idx ? 'tour-dot active' : i < idx ? 'tour-dot done' : 'tour-dot';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+  document.getElementById('tour-tooltip').innerHTML = `
+    <button class="tour-close-x" onclick="closeTour()" title="閉じる (Esc)">×</button>
+    <div class="tour-tt-head">
+      <div class="tour-counter">STEP ${idx+1} / ${total}</div>
+      <h3>${step.title}</h3>
+    </div>
+    <div id="tour-anim-box" class="tour-anim-wrap"></div>
+    <div class="tour-tt-body">
+      <p>${step.body}</p>
+      ${step.tip ? `<div class="tour-tt-tip">${step.tip}</div>` : ''}
+    </div>
+    <div class="tour-tt-footer">
+      <button class="tour-btn-skip" onclick="closeTour()">スキップ</button>
+      <div class="tour-dots">${dots}</div>
+      <div class="tour-tt-btns">
+        ${idx > 0 ? `<button class="tour-btn tour-btn-prev" onclick="tourPrev()">← 前へ</button>` : ''}
+        <button class="tour-btn tour-btn-next" onclick="tourNext()">${idx === total-1 ? '✓ 始める' : '次へ →'}</button>
+      </div>
+    </div>`;
+  _startTourAnim(idx);
+}
+
+// ===== Tour Animations =====
+let _tourAnimTimers = [];
+function _clearTourAnim() { _tourAnimTimers.forEach(clearTimeout); _tourAnimTimers = []; }
+function _ta(ms, fn) { _tourAnimTimers.push(setTimeout(fn, ms)); }
+
+function _startTourAnim(idx) {
+  _clearTourAnim();
+  const box = document.getElementById('tour-anim-box');
+  if (!box) return;
+  [_anim0,_anim1,_anim2,_anim3,_anim4,_anim5,_anim6][idx]?.(box);
+}
+
+/* Step 0 – 担当者追加 */
+function _anim0(box) {
+  const NAMES = ['田中花子','佐藤一郎','鈴木美咲'];
+  let ni = 0;
+  box.innerHTML = `<div class="t-anim">
+    <div style="display:flex;gap:5px;align-items:center;margin-bottom:7px;">
+      <div id="ta0-in" style="flex:1;border:1px solid #cbd5e1;border-radius:4px;padding:3px 7px;font-size:11px;min-height:22px;background:#fff;overflow:hidden;white-space:nowrap;"></div>
+      <button id="ta0-btn" style="padding:3px 9px;background:#3b82f6;color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:600;">追加</button>
+    </div>
+    <div id="ta0-tags" style="display:flex;flex-wrap:wrap;gap:4px;">
+      <span style="padding:2px 8px;background:#dbeafe;border:1px solid #93c5fd;border-radius:10px;font-size:11px;color:#1e40af;font-weight:600;">山田太郎</span>
+      <span style="padding:2px 8px;background:#dbeafe;border:1px solid #93c5fd;border-radius:10px;font-size:11px;color:#1e40af;font-weight:600;">高橋裕二</span>
+    </div>
+  </div>`;
+  function run() {
+    const inp = document.getElementById('ta0-in');
+    const btn = document.getElementById('ta0-btn');
+    const tags = document.getElementById('ta0-tags');
+    if (!inp) return;
+    const name = NAMES[ni++ % NAMES.length];
+    let ci = 0;
+    function type() {
+      if (!document.getElementById('ta0-in')) return;
+      if (ci < name.length) { inp.textContent = name.slice(0, ++ci); _ta(160, type); }
+      else {
+        _ta(350, () => {
+          if (!document.getElementById('ta0-btn')) return;
+          btn.style.transform = 'scale(.9)'; btn.style.background = '#1d4ed8';
+          _ta(180, () => {
+            if (!document.getElementById('ta0-btn')) return;
+            btn.style.transform = ''; btn.style.background = '#3b82f6';
+            inp.textContent = '';
+            _ta(80, () => {
+              if (!document.getElementById('ta0-tags')) return;
+              const sp = document.createElement('span');
+              sp.textContent = name;
+              sp.style.cssText = 'padding:2px 8px;background:#dbeafe;border:1px solid #93c5fd;border-radius:10px;font-size:11px;color:#1e40af;font-weight:600;display:inline-block;opacity:0;transform:translateY(-5px);transition:opacity .3s,transform .3s;';
+              tags.appendChild(sp);
+              requestAnimationFrame(() => requestAnimationFrame(() => { sp.style.opacity='1'; sp.style.transform=''; }));
+              _ta(1600, () => {
+                sp.style.opacity = '0'; sp.style.transform = 'translateY(-5px)';
+                _ta(300, () => { sp.remove(); run(); });
+              });
+            });
+          });
+        });
+      }
+    }
+    type();
+  }
+  _ta(400, run);
+}
+
+/* Step 1 – 当直回数変更 */
+function _anim1(box) {
+  box.innerHTML = `<div class="t-anim">
+    <div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:11px;">
+      <div style="background:#3b82f6;color:#fff;padding:4px 9px;font-weight:700;">グループA</div>
+      <div style="padding:7px 9px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="color:#64748b;width:38px;font-size:10px;">平日</span>
+          <button id="ta1-d1" style="width:20px;height:20px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;font-size:13px;line-height:1;cursor:pointer;">−</button>
+          <span id="ta1-v1" style="width:22px;text-align:center;font-weight:700;font-size:14px;transition:color .2s;">3</span>
+          <button id="ta1-i1" style="width:20px;height:20px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;font-size:13px;line-height:1;cursor:pointer;">＋</button>
+          <span style="color:#94a3b8;font-size:10px;">回/月</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="color:#64748b;width:38px;font-size:10px;">土日祝</span>
+          <button id="ta1-d2" style="width:20px;height:20px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;font-size:13px;line-height:1;cursor:pointer;">−</button>
+          <span id="ta1-v2" style="width:22px;text-align:center;font-weight:700;font-size:14px;transition:color .2s;">2</span>
+          <button id="ta1-i2" style="width:20px;height:20px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;font-size:13px;line-height:1;cursor:pointer;">＋</button>
+          <span style="color:#94a3b8;font-size:10px;">回/月</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  let v1=3, v2=2;
+  function flash(btnId, valId, delta) {
+    const b = document.getElementById(btnId), v = document.getElementById(valId);
+    if (!b||!v) return;
+    b.style.background='#dbeafe'; b.style.borderColor='#3b82f6';
+    _ta(180, () => {
+      if (!document.getElementById(btnId)) return;
+      b.style.background=''; b.style.borderColor='';
+      if (valId==='ta1-v1') v1+=delta; else v2+=delta;
+      v.textContent = valId==='ta1-v1'?v1:v2;
+      v.style.color='#3b82f6';
+      _ta(380, () => { const el=document.getElementById(valId); if(el) el.style.color=''; });
+    });
+  }
+  function run() {
+    if (!document.getElementById('ta1-v1')) return;
+    _ta(400,  ()=>{ flash('ta1-i1','ta1-v1',1);
+    _ta(1000, ()=>{ flash('ta1-i2','ta1-v2',1);
+    _ta(1600, ()=>{ flash('ta1-d1','ta1-v1',-1);
+    _ta(2200, ()=>{ flash('ta1-d2','ta1-v2',-1);
+    _ta(3000, run); }); }); }); });
+  }
+  _ta(200, run);
+}
+
+/* Step 2 – 外勤先追加 */
+function _anim2(box) {
+  box.innerHTML = `<div class="t-anim">
+    <div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
+      <table style="border-collapse:collapse;font-size:11px;width:100%;">
+        <thead><tr>
+          <th style="padding:4px 8px;background:#f1f5f9;border:1px solid #e2e8f0;">当直</th>
+          <th id="ta2-th" style="padding:4px 0;background:#f1f5f9;border:1px solid #e2e8f0;overflow:hidden;white-space:nowrap;max-width:0;transition:max-width .5s ease,padding .5s ease;"></th>
+          <th id="ta2-plus" style="padding:4px 10px;background:#f1f5f9;border:1px solid #e2e8f0;cursor:pointer;color:#3b82f6;font-size:14px;transition:background .15s;">＋</th>
+        </tr></thead>
+        <tbody><tr>
+          <td style="padding:3px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:700;color:#059669;">○</td>
+          <td id="ta2-td" style="padding:3px 0;border:1px solid #e2e8f0;text-align:center;overflow:hidden;max-width:0;transition:max-width .5s ease,padding .5s ease;font-weight:700;color:#dc2626;"></td>
+          <td style="border:1px solid #e2e8f0;"></td>
+        </tr></tbody>
+      </table>
+    </div>
+  </div>`;
+  function run() {
+    const pl=document.getElementById('ta2-plus'), th=document.getElementById('ta2-th'), td=document.getElementById('ta2-td');
+    if (!pl) return;
+    _ta(600, () => {
+      if (!document.getElementById('ta2-plus')) return;
+      pl.style.background='#dbeafe';
+      _ta(180, () => {
+        if (!document.getElementById('ta2-plus')) return;
+        pl.style.background='';
+        th.textContent='クリニックA'; th.style.maxWidth='80px'; th.style.padding='4px 8px';
+        td.textContent='✕';           td.style.maxWidth='80px'; td.style.padding='3px 8px';
+        _ta(1800, () => {
+          if (!document.getElementById('ta2-th')) return;
+          th.style.maxWidth='0'; th.style.padding='4px 0';
+          td.style.maxWidth='0'; td.style.padding='3px 0';
+          _ta(550, () => { if(document.getElementById('ta2-th')){th.textContent='';td.textContent='';} _ta(400, run); });
+        });
+      });
+    });
+  }
+  _ta(300, run);
+}
+
+/* Step 3 – 外勤先ドラッグ */
+function _anim3(box) {
+  // Phase 1: ＋ボタンを押してクリニックA列を追加
+  // Phase 2: 勤務帯セルをクリックで 外来→日直→当直 と切替
+  const bands = [
+    {label:'外来', bg:'#dbeafe', color:'#1d4ed8'},
+    {label:'日直', bg:'#fef9c3', color:'#a16207'},
+    {label:'当直', bg:'#ede9fe', color:'#6d28d9'},
+  ];
+
+  function init() {
+    box.innerHTML = `<div class="t-anim" style="position:relative;">
+      <table style="border-collapse:collapse;font-size:10px;">
+        <thead>
+          <tr>
+            <th style="padding:1px 4px;background:#fff;border:1px solid #888;white-space:nowrap;text-align:left;">日付</th>
+            <th style="padding:1px 3px;background:#fff;border:1px solid #888;text-align:center;width:18px;">曜</th>
+            <th style="padding:1px 4px;background:#fff;border:1px solid #888;text-align:center;">当直</th>
+            <th id="ta3-new" style="padding:1px 5px;background:#fff;border:1px solid #888;text-align:center;font-weight:bold;white-space:nowrap;opacity:0;transition:opacity .3s;">クリニックA</th>
+            <th id="ta3-plus" style="padding:2px 3px;background:#fff;border:1px solid #888;text-align:center;">
+              <span id="ta3-plus-btn" style="display:inline-block;border:1px dashed #94a3b8;border-radius:3px;padding:0 6px;color:#64748b;font-size:11px;font-weight:bold;cursor:pointer;transition:background .15s,color .15s;">＋</span>
+            </th>
+          </tr>
+          <tr>
+            <td style="padding:1px 4px;font-weight:bold;background:#f8fafc;border:1px solid #888;">勤務帯</td>
+            <td style="border:1px solid #888;background:#f8fafc;"></td>
+            <td style="border:1px solid #888;background:#f8fafc;"></td>
+            <td id="ta3-band" style="padding:1px 4px;border:1px solid #888;text-align:center;font-size:10px;font-weight:bold;cursor:pointer;background:#f8fafc;color:#94a3b8;transition:background .2s,color .2s,transform .15s;opacity:0;">—</td>
+            <td style="border:1px solid #888;background:#f8fafc;"></td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:1px 4px;border:1px solid #888;font-weight:bold;background:#fff;">4/1</td>
+            <td style="padding:1px 3px;border:1px solid #888;text-align:center;font-weight:bold;color:#0055cc;background:#fff;">月</td>
+            <td style="padding:1px 4px;border:1px solid #888;text-align:center;font-weight:bold;background:#dcfce7;color:#15803d;">○</td>
+            <td id="ta3-cell" style="padding:1px 4px;border:1px solid #888;text-align:center;font-weight:bold;background:#fee2e2;color:#dc2626;opacity:0;transition:opacity .3s;">✕</td>
+            <td style="border:1px solid #888;background:#f8fafc;"></td>
+          </tr>
+        </tbody>
+      </table>
+      <div id="ta3-cursor" style="position:absolute;font-size:16px;opacity:0;pointer-events:none;transition:left .55s cubic-bezier(.4,0,.2,1),top .55s cubic-bezier(.4,0,.2,1),opacity .2s;">👆</div>
+    </div>`;
+  }
+
+  function moveCursor(targetEl, dur, after) {
+    const cursor = document.getElementById('ta3-cursor');
+    const wrap = box.querySelector('.t-anim');
+    if (!cursor || !wrap || !targetEl) { _ta(dur, after); return; }
+    const wrapR = wrap.getBoundingClientRect();
+    const r = targetEl.getBoundingClientRect();
+    cursor.style.left = (r.left - wrapR.left + r.width/2 - 4) + 'px';
+    cursor.style.top  = (r.top - wrapR.top + r.height/2) + 'px';
+    cursor.style.opacity = '1';
+    _ta(dur, after);
+  }
+
+  function reset() {
+    const newCol  = document.getElementById('ta3-new');
+    const newCell = document.getElementById('ta3-cell');
+    const band    = document.getElementById('ta3-band');
+    if (newCol)  newCol.style.opacity  = '0';
+    if (newCell) newCell.style.opacity = '0';
+    if (band) {
+      band.style.opacity = '0';
+      band.textContent = '—';
+      band.style.background = '#f8fafc';
+      band.style.color = '#94a3b8';
+    }
+  }
+
+  function phaseAddColumn(done) {
+    reset();
+    const plus = document.getElementById('ta3-plus-btn');
+    _ta(400, () => {
+      moveCursor(plus, 550, () => {
+        if (plus) {
+          plus.style.background = '#dbeafe';
+          plus.style.color = '#1d4ed8';
+        }
+        _ta(180, () => {
+          if (plus) { plus.style.background = ''; plus.style.color = '#64748b'; }
+          const newCol = document.getElementById('ta3-new');
+          const newCell = document.getElementById('ta3-cell');
+          const band    = document.getElementById('ta3-band');
+          if (newCol)  newCol.style.opacity  = '1';
+          if (newCell) newCell.style.opacity = '1';
+          if (band)    band.style.opacity    = '1';
+          _ta(700, done);
+        });
+      });
+    });
+  }
+
+  function phaseBand(done) {
+    const band = document.getElementById('ta3-band');
+    if (!band) return done && done();
+    moveCursor(band, 500, () => {
+      let i = 0;
+      function cycle() {
+        if (!document.getElementById('ta3-band')) return;
+        if (i >= bands.length) { _ta(700, done); return; }
+        const b = bands[i];
+        band.style.transform = 'scale(.9)';
+        _ta(110, () => {
+          if (!document.getElementById('ta3-band')) return;
+          band.style.transform = '';
+          band.textContent = b.label;
+          band.style.background = b.bg;
+          band.style.color = b.color;
+          i++;
+          _ta(900, cycle);
+        });
+      }
+      cycle();
+    });
+  }
+
+  function loop() {
+    phaseAddColumn(() => {
+      phaseBand(() => {
+        const cursor = document.getElementById('ta3-cursor');
+        if (cursor) cursor.style.opacity = '0';
+        _ta(500, loop);
+      });
+    });
+  }
+
+  init();
+  _ta(300, loop);
+}
+
+/* Step 4 – グリッドを更新 */
+function _anim4(box) {
+  const vals = ['○','○','✕','○','✕','○','✕','○','○','✕','○','✕'];
+  box.innerHTML = `<div class="t-anim">
+    <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px;flex-wrap:wrap;">
+      <span style="font-size:10px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;color:#475569;">2025-04-01</span>
+      <span style="color:#94a3b8;font-size:10px;">〜</span>
+      <span style="font-size:10px;padding:2px 6px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;color:#475569;">2025-04-30</span>
+      <button id="ta4-btn" style="padding:2px 8px;background:#64748b;color:#fff;border:none;border-radius:4px;font-size:10px;font-weight:600;transition:all .15s;white-space:nowrap;">グリッドを更新</button>
+    </div>
+    <div id="ta4-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:2px;opacity:0;transition:opacity .4s;"></div>
+  </div>`;
+  vals.forEach(v => {
+    const c = document.createElement('div');
+    c.textContent=v; const m=v==='○';
+    c.style.cssText=`text-align:center;padding:2px;border-radius:3px;font-size:11px;font-weight:700;background:${m?'#d1fae5':'#fef2f2'};color:${m?'#059669':'#dc2626'};`;
+    document.getElementById('ta4-grid')?.appendChild(c);
+  });
+  function run() {
+    const btn=document.getElementById('ta4-btn'), grid=document.getElementById('ta4-grid');
+    if (!btn) return;
+    grid.style.opacity='0';
+    _ta(500, () => {
+      if (!document.getElementById('ta4-btn')) return;
+      btn.style.background='#3b82f6'; btn.style.transform='scale(.93)';
+      _ta(200, () => {
+        if (!document.getElementById('ta4-btn')) return;
+        btn.style.transform='';
+        grid.style.opacity='1';
+        _ta(2200, () => {
+          if (!document.getElementById('ta4-grid')) return;
+          btn.style.background='#64748b';
+          grid.style.opacity='0';
+          _ta(500, run);
+        });
+      });
+    });
+  }
+  _ta(200, run);
+}
+
+/* Step 5 – 作る */
+function _anim5(box) {
+  const row = [
+    {d:'4/1',v:'○'},{d:'4/2',v:'○'},{d:'4/3',v:'○'},
+    {d:'4/7',v:'○'},{d:'4/8',v:'○'},{d:'4/9',v:'○'},
+  ];
+  const cellStyle = v => `padding:2px;border:1px solid #e2e8f0;text-align:center;font-size:11px;font-weight:700;background:${v==='○'?'#d1fae5':'#fef2f2'};color:${v==='○'?'#059669':'#dc2626'};transition:background .2s,color .2s;cursor:pointer;`;
+  box.innerHTML = `<div class="t-anim">
+    <table style="border-collapse:collapse;font-size:10px;width:100%;margin-bottom:8px;">
+      <thead><tr>
+        <th style="padding:2px 5px;background:#f1f5f9;border:1px solid #e2e8f0;">名前</th>
+        ${row.map(c=>`<th style="padding:2px 4px;background:#f1f5f9;border:1px solid #e2e8f0;text-align:center;">${c.d}</th>`).join('')}
+      </tr></thead>
+      <tbody><tr>
+        <td style="padding:2px 5px;border:1px solid #e2e8f0;white-space:nowrap;">山田</td>
+        ${row.map((c,i)=>`<td id="ta5-c${i}" style="${cellStyle(c.v)}">${c.v}</td>`).join('')}
+      </tr></tbody>
+    </table>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button id="ta5-btn" style="padding:4px 14px;background:#059669;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:700;transition:transform .15s;">✅ 作る</button>
+      <span id="ta5-res" style="font-size:10px;color:#059669;font-weight:700;opacity:0;transition:opacity .3s;">当直表を作成しました！</span>
+    </div>
+  </div>`;
+  function tog(id, newV) {
+    const el=document.getElementById(id); if(!el) return;
+    el.textContent=newV;
+    el.style.background=newV==='○'?'#d1fae5':'#fef2f2';
+    el.style.color=newV==='○'?'#059669':'#dc2626';
+  }
+  function run() {
+    const btn=document.getElementById('ta5-btn'), res=document.getElementById('ta5-res');
+    if (!btn) return;
+    // reset: all ○
+    tog('ta5-c1','○'); tog('ta5-c4','○'); res.style.opacity='0';
+    // animate ○ → ✕ (当直不可に変更)
+    _ta(500,  ()=>{ tog('ta5-c1','✕');
+    _ta(900,  ()=>{ tog('ta5-c4','✕');
+    _ta(1300, ()=>{
+      if (!document.getElementById('ta5-btn')) return;
+      btn.style.transform='scale(.92)';
+      _ta(180, ()=>{
+        if (!document.getElementById('ta5-btn')) return;
+        btn.style.transform='';
+        if (document.getElementById('ta5-res')) res.style.opacity='1';
+        _ta(1600, run);
+      });
+    }); }); });
+  }
+  _ta(300, run);
+}
+
+/* Step 6 – ドラッグで固定割り当て・変更 */
+function _anim6(box) {
+  // Phase 1: 作成前 – 名前タグをセルにドラッグして固定割り当て
+  // Phase 2: 作成後 – セル間で名前をドラッグして入れ替え
+
+  const thStyle = 'padding:1px 4px;background:#fff;border:1px solid #888;white-space:nowrap;font-size:10px;';
+  const mkCell = (id, txt, bg, col, extra='') =>
+    `<td id="${id}" style="padding:2px 5px;border:1px solid #888;text-align:center;font-size:10px;font-weight:bold;background:${bg};color:${col};transition:background .2s,color .2s,opacity .2s;${extra}">${txt}</td>`;
+
+  box.innerHTML = `<div class="t-anim" style="position:relative;">
+    <div id="ta6-lbl" style="font-size:10px;color:#64748b;font-weight:600;margin-bottom:3px;transition:opacity .25s;">作成前：固定割り当て</div>
+    <div style="margin-bottom:5px;">
+      <table style="border-collapse:collapse;width:100%;">
+        <thead><tr>
+          <th style="${thStyle}text-align:left;">日付</th>
+          <th style="${thStyle}text-align:center;width:18px;">曜</th>
+          <th style="${thStyle}text-align:center;">当直</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td style="padding:1px 4px;border:1px solid #888;font-weight:bold;font-size:10px;">4/1</td>
+            <td style="padding:1px 3px;border:1px solid #888;text-align:center;font-weight:bold;color:#0055cc;font-size:10px;">月</td>
+            ${mkCell('ta6-c0','○','#dcfce7','#15803d')}
+          </tr>
+          <tr style="background:#daeef3;">
+            <td style="padding:1px 4px;border:1px solid #888;font-weight:bold;font-size:10px;background:#daeef3;">4/5</td>
+            <td style="padding:1px 3px;border:1px solid #888;text-align:center;font-weight:bold;color:#0055cc;font-size:10px;background:#daeef3;">土</td>
+            ${mkCell('ta6-c2','○','#dcfce7','#15803d')}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- 名前タグ (Phase 1 用) -->
+    <div id="ta6-nt" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:16px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.4);font-size:11px;font-weight:700;cursor:grab;white-space:nowrap;transition:opacity .3s;">山田太郎 <span style="color:#6b7280;">×</span></div>
+  </div>`;
+
+  function drag(wrap, fromEl, toEl, ghostTxt, ghostStyle, onLand) {
+    if (!fromEl || !toEl || !wrap) return;
+    const boxR = wrap.getBoundingClientRect();
+    const fR = fromEl.getBoundingClientRect();
+    const tR = toEl.getBoundingClientRect();
+    const ghost = document.createElement('div');
+    ghost.textContent = ghostTxt;
+    ghost.style.cssText = `position:absolute;z-index:10;pointer-events:none;cursor:grabbing;`
+      + `left:${fR.left-boxR.left}px;top:${fR.top-boxR.top}px;`
+      + `transition:left .65s cubic-bezier(.4,0,.2,1),top .65s cubic-bezier(.4,0,.2,1),opacity .3s;`
+      + ghostStyle;
+    wrap.appendChild(ghost);
+    fromEl.style.opacity = '0.25';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      ghost.style.left = (tR.left - boxR.left) + 'px';
+      ghost.style.top  = (tR.top  - boxR.top)  + 'px';
+    }));
+    _ta(440, () => { if (toEl.isConnected) toEl.style.outline = '2px dashed #3b82f6'; });
+    _ta(710, () => {
+      ghost.style.opacity = '0';
+      fromEl.style.opacity = '1';
+      if (toEl.isConnected) { toEl.style.outline = ''; onLand(); }
+      _ta(180, () => ghost.remove());
+    });
+  }
+
+  function phasePreAssign(done) {
+    const lbl=document.getElementById('ta6-lbl'), nt=document.getElementById('ta6-nt');
+    const c0=document.getElementById('ta6-c0');
+    const wrap=box.querySelector('.t-anim');
+    if (!nt||!c0||!wrap) return;
+    if (lbl) lbl.textContent='作成前：固定割り当て';
+    // reset
+    c0.textContent='○'; c0.style.background='#dcfce7'; c0.style.color='#15803d'; c0.style.fontSize='';
+    nt.style.display=''; nt.style.opacity='1';
+    _ta(600, () => {
+      if (!document.getElementById('ta6-nt')) return;
+      drag(wrap, nt, c0,
+        '山田太郎',
+        'padding:3px 8px;border-radius:16px;background:rgba(59,130,246,.85);border:1px solid rgba(59,130,246,.6);font-size:11px;font-weight:700;color:white;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap;',
+        () => {
+          c0.textContent='山田太郎';
+          c0.style.background='#dbeafe';
+          c0.style.color='#1d4ed8';
+          c0.style.fontSize='10px';
+        }
+      );
+      _ta(1900, done);
+    });
+  }
+
+  function phasePostSwap(done) {
+    const lbl=document.getElementById('ta6-lbl'), nt=document.getElementById('ta6-nt');
+    const c0=document.getElementById('ta6-c0'), c2=document.getElementById('ta6-c2');
+    const wrap=box.querySelector('.t-anim');
+    if (!c0||!c2||!wrap) return;
+    if (lbl) lbl.textContent='作成後：ドラッグで入れ替え';
+    // setup completed roster state
+    c0.textContent='山田太郎'; c0.style.background='#dbeafe'; c0.style.color='#1d4ed8'; c0.style.fontSize='10px';
+    c2.textContent='佐藤一郎'; c2.style.background='#dbeafe'; c2.style.color='#1d4ed8'; c2.style.fontSize='10px';
+    if (nt) nt.style.display='none';
+    _ta(600, () => {
+      if (!document.getElementById('ta6-c0')) return;
+      drag(wrap, c0, c2,
+        '山田太郎',
+        'padding:2px 5px;background:#1d4ed8;border:1px solid #1e40af;font-size:10px;font-weight:700;color:white;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap;',
+        () => {
+          const prev = c2.textContent;
+          c2.textContent='山田太郎';
+          c0.textContent=prev; // swap
+        }
+      );
+      _ta(1900, done);
+    });
+  }
+
+  function loop() { phasePreAssign(() => phasePostSwap(loop)); }
+  _ta(300, loop);
+}
+
+function _tourPos(idx) {
+  const step = TOUR_STEPS[idx];
+  const el = document.querySelector(step.target);
+  if (!el) return;
+  // instant scroll（smooth だとスクロール完了前に座標を読んでしまう）
+  el.scrollIntoView({ block: 'nearest' });
+  setTimeout(() => {
+    const rect = el.getBoundingClientRect();
+    const pad = 6;
+    const T = rect.top - pad, B = rect.bottom + pad;
+    const L = rect.left - pad, R = rect.right + pad;
+    const W = window.innerWidth, H = window.innerHeight;
+
+    // spotlight cutout via polygon (outer CW, inner CCW)
+    document.getElementById('tour-overlay').style.clipPath =
+      `polygon(0 0,${W}px 0,${W}px ${H}px,0 ${H}px,` +
+      `0 ${T}px,${L}px ${T}px,${L}px ${B}px,${R}px ${B}px,${R}px ${T}px,${L}px ${T}px,0 ${T}px)`;
+
+    // highlight ring
+    const ring = document.getElementById('tour-ring');
+    ring.style.cssText = `display:block;top:${T}px;left:${L}px;width:${R-L}px;height:${B-T}px;`;
+
+    // tooltip position
+    const tt = document.getElementById('tour-tooltip');
+    tt.classList.remove('hidden');
+    const ttW = 288, ttH = tt.offsetHeight || 300;
+    const pos = step.pos || 'bottom';
+    const arrow = document.getElementById('tour-arrow');
+    let ttTop, ttLeft, arTop, arLeft, arCls;
+
+    if (pos === 'top' || (pos === 'bottom' && B + ttH + 14 > H)) {
+      // ターゲットの上に配置
+      ttTop = T - ttH - 14;
+      arCls = 'arr-bottom';
+      arTop = T - 14;
+      if (ttTop < 8) {
+        // 上にも入らない場合: 下に配置してクランプ
+        ttTop = B + 14;
+        arCls = 'arr-top';
+        arTop = B + 4;
+      }
+    } else {
+      // ターゲットの下に配置
+      ttTop = B + 14;
+      arCls = 'arr-top';
+      arTop = B + 4;
+    }
+    // 画面内に収まるよう最終クランプ
+    ttTop = Math.max(8, Math.min(ttTop, H - ttH - 8));
+    ttLeft = Math.min(Math.max(L, 8), W - ttW - 8);
+
+    arLeft = Math.round((L + R) / 2) - 9;
+    arLeft = Math.min(Math.max(arLeft, ttLeft + 16), ttLeft + ttW - 34);
+
+    tt.style.top = ttTop + 'px';
+    tt.style.left = ttLeft + 'px';
+    arrow.className = arCls;
+    arrow.style.top = arTop + 'px';
+    arrow.style.left = arLeft + 'px';
+  }, 80);
+}
+
+// ===== Init =====
+// =============================================================
+// 起動シーケンス: Clerk認証 → API取得 → アプリ初期化
+// =============================================================
+
+// 公式の @clerk/localizations から jaJP を動的インポート
+// 失敗時は最低限の日本語インライン辞書にフォールバック
+const _clerkJaJPFallback = {
+  locale: 'ja-JP',
+  socialButtonsBlockButton: '{{provider|titleize}}でつづける',
+  dividerText: 'または',
+  formButtonPrimary: '続ける',
+  formFieldLabel__emailAddress: 'メールアドレス',
+  formFieldLabel__password: 'パスワード',
+  formFieldInputPlaceholder__emailAddress: 'メールアドレス',
+  signIn: {
+    start: { title: 'ログイン', subtitle: '当直表メーカーにアクセス',
+             actionText: 'アカウントをお持ちでない方', actionLink: '会員登録' }
+  },
+  signUp: {
+    start: { title: '会員登録', subtitle: 'Googleアカウントで簡単登録',
+             actionText: 'すでにアカウントをお持ちの方', actionLink: 'ログイン' }
+  },
+  userButton: {
+    action__manageAccount: 'アカウント管理',
+    action__signOut: 'ログアウト'
+  },
+  userProfile: {
+    formButtonPrimary__save: '保存',
+    formButtonReset: 'キャンセル',
+    navbar: { title: 'アカウント', description: 'アカウント情報を管理',
+              account: 'プロフィール', security: 'セキュリティ' },
+    start: {
+      headerTitle__account: 'プロフィール詳細',
+      headerTitle__security: 'セキュリティ',
+      profileSection: { title: 'プロフィール', primaryButton: 'プロフィールを更新' },
+      usernameSection: { title: 'ユーザー名', primaryButton__updateUsername: 'ユーザー名を更新', primaryButton__setUsername: 'ユーザー名を設定' },
+      emailAddressesSection: {
+        title: 'メールアドレス', primaryButton: 'メールアドレスを追加',
+        detailsAction__primary: 'メイン',
+        detailsAction__nonPrimary: 'メインに設定',
+        detailsAction__unverified: '確認',
+        destructiveAction: 'メールアドレスを削除'
+      },
+      phoneNumbersSection: {
+        title: '電話番号', primaryButton: '電話番号を追加',
+        detailsAction__primary: 'メイン',
+        detailsAction__nonPrimary: 'メインに設定',
+        detailsAction__unverified: '確認',
+        destructiveAction: '電話番号を削除'
+      },
+      connectedAccountsSection: {
+        title: '連携アカウント', primaryButton: 'アカウントを連携',
+        actionLabel__connectionFailed: '再試行',
+        actionLabel__reauthorize: '再承認',
+        subtitle__reauthorize: 'スコープが更新されたため、再承認が必要です',
+        destructiveActionTitle: '削除'
+      },
+      passwordSection: { title: 'パスワード',
+        primaryButton__updatePassword: 'パスワードを更新',
+        primaryButton__setPassword: 'パスワードを設定' },
+      mfaSection: { title: '2段階認証',
+        primaryButton: '2段階認証を追加' },
+      activeDevicesSection: { title: 'アクティブなデバイス',
+        primaryButton: 'アクティブなデバイス',
+        detailsTitle__currentDevice: '現在のデバイス',
+        detailsAction__currentDevice: 'サインアウト' },
+      web3WalletsSection: { title: 'Web3ウォレット',
+        primaryButton: 'Web3ウォレットを連携',
+        destructiveAction: 'ウォレットを削除' },
+      dangerSection: { title: 'アカウントを削除',
+        deleteAccountButton: 'アカウントを削除',
+        deleteAccountTitle: 'アカウント削除',
+        deleteAccountDescription: 'アカウントとそれに関連するすべてのデータが完全に削除されます',
+        deleteAccountActionDescription: '続行するには「Delete account」と入力してください',
+        deleteAccountConfirm: 'アカウントを削除' }
+    },
+    profilePage: { title: 'プロフィールを更新',
+      successMessage: 'プロフィールを更新しました',
+      imageFormSubtitle: '画像をアップロード',
+      imageFormTitle: 'プロフィール画像',
+      imageFormDestructiveActionSubtitle: '削除',
+      imageFormDestructiveAction: '画像を削除',
+      readonly: 'プロフィール情報は外部連携先から取得されています' },
+    emailAddressPage: { title: 'メールアドレスを追加',
+      verifyTitle: 'メールアドレスを確認',
+      formHint: 'このメールアドレスでサインインできるようになります',
+      emailCode: { formHint: 'このメールアドレスに確認コードが送信されます',
+        formTitle: '確認コード',
+        formSubtitle: 'メールに送られた確認コードを入力',
+        resendButton: 'コードを再送信',
+        successMessage: 'メールアドレス {{identifier}} がアカウントに追加されました' } },
+    formButtonPrimary: '保存',
+    deletePage: { title: 'アカウント削除',
+      messageLine1: '本当にアカウントを削除しますか?',
+      messageLine2: 'この操作は取り消せません',
+      actionDescription: '続行するには「Delete account」と入力してください',
+      confirm: 'アカウントを削除' }
+  }
+};
+
+let _clerkLoc = null;
+
+async function _loadClerkLoc() {
+  try {
+    const mod = await import('https://cdn.jsdelivr.net/npm/@clerk/localizations@latest/+esm');
+    if (mod && (mod.jaJP || (mod.default && mod.default.jaJP))) {
+      return mod.jaJP || mod.default.jaJP;
+    }
+  } catch (e) {
+    console.warn('Failed to load @clerk/localizations, using fallback', e);
+  }
+  return _clerkJaJPFallback;
+}
+
+function openSignIn() {
+  if (!window.Clerk) return;
+  // v5: forceRedirectUrl を絶対URLで指定して、ログイン後必ず /app に戻る
+  const target = window.location.origin + '/app';
+  Clerk.openSignIn({
+    forceRedirectUrl: target,
+    fallbackRedirectUrl: target,
+    afterSignInUrl: target,
+    afterSignUpUrl: target
+  });
+}
+function openUserMenu() {
+  if (!window.Clerk) return;
+  Clerk.openUserProfile();
+}
+
+function _showAuthGate() {
+  const g = document.getElementById('auth-gate');
+  if (g) g.classList.remove('hidden');
+  const lt = document.getElementById('auth-loading-text');
+  const pt = document.getElementById('auth-prompt-text');
+  const ab = document.getElementById('auth-buttons');
+  if (lt) lt.style.display = 'none';
+  if (pt) pt.style.display = '';
+  if (ab) ab.style.display = '';
+}
+function _hideAuthGate() {
+  const g = document.getElementById('auth-gate');
+  if (g) g.classList.add('hidden');
+}
+
+function _showUserBadge(user) {
+  const b = document.getElementById('user-badge');
+  const n = document.getElementById('ub-name');
+  const a = document.getElementById('ub-avatar');
+  if (!b || !user) return;
+  const display = user.firstName || user.username || user.primaryEmailAddress?.emailAddress || 'ユーザー';
+  if (n) n.textContent = display;
+  if (a) a.textContent = (display[0] || '?').toUpperCase();
+  b.style.display = '';
+}
+
+// ===== ゲストモード関連 =====
+function showGuestBanner() {
+  const b = document.getElementById('guest-banner');
+  if (b) b.classList.add('show');
+}
+function hideGuestBanner() {
+  const b = document.getElementById('guest-banner');
+  if (b) b.classList.remove('show');
+}
+
+// ゲストモードを開始: localStorage に切替えてアプリ起動
+function continueAsGuest() {
+  _mode = 'guest';
+  try { localStorage.setItem(GUEST_MODE_KEY, '1'); } catch (e) {}
+  _hideAuthGate();
+  _initAppGuest();
+  showGuestBanner();
+}
+
+// ゲストモードでのアプリ初期化(localStorageから復元)
+function _initAppGuest() {
+  // localStorage から保存データを復元
+  try {
+    const raw = localStorage.getItem(GUEST_DATA_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      _applyStateBlob(s);
+      if (currentDates.length) {
+        const sd = document.getElementById('start-date');
+        const ed = document.getElementById('end-date');
+        if (sd) sd.value = currentDates[0];
+        if (ed) ed.value = currentDates[currentDates.length-1];
+      }
+      if (storedRoster) {
+        renderRosterFromStored();
+        const pb = document.getElementById('preview-btn');
+        if (pb) pb.style.display = 'inline-flex';
+        switchTab('roster');
+      } else if (currentDates.length) {
+        renderPreviewEditable();
+      }
+    }
+  } catch (e) {}
+
+  // 新規・既存とも初期日付未設定なら今月をセット
+  if (!currentDates.length) {
+    const t = new Date(), y = t.getFullYear(), m = String(t.getMonth()+1).padStart(2,'0');
+    const last = new Date(t.getFullYear(), t.getMonth()+1, 0);
+    const sd = document.getElementById('start-date');
+    const ed = document.getElementById('end-date');
+    if (sd) sd.value = `${y}-${m}-01`;
+    if (ed) ed.value = last.toISOString().slice(0,10);
+  }
+
+  updateGroupSelect();
+  renderGroupsAndNames();
+
+  // グループの maxOnCall / maxSubDuty を 0 でバックフィル
+  const onCallCnt  = COLS.filter(c => c.isOnCall).length;
+  const subDutyCnt = COLS.filter(c => c.isSubduty).length;
+  groups.forEach(g => {
+    if (!g.maxOnCall)  g.maxOnCall  = {};
+    if (!g.maxSubDuty) g.maxSubDuty = {};
+    for (let i = 1; i <= onCallCnt;  i++) if (g.maxOnCall[i]  == null) g.maxOnCall[i]  = 0;
+    for (let i = 1; i <= subDutyCnt; i++) if (g.maxSubDuty[i] == null) g.maxSubDuty[i] = 0;
+  });
+
+  updateUndoButton();
+  updateOnCallButton();
+  updateSubDutyButton();
+  renderGrid();
+
+  if (!localStorage.getItem(STORAGE_TUTORIAL)) openTour();
+}
+
+async function _initAppForUser() {
+  // クラウドから状態を取得
+  const loaded = await loadStateFromCloud();
+  if (!loaded) {
+    // 新規ユーザー: デフォルトの日付範囲を入れておく
+    const t = new Date(), y = t.getFullYear(), m = String(t.getMonth()+1).padStart(2,'0');
+    const last = new Date(t.getFullYear(), t.getMonth()+1, 0);
+    const sd = document.getElementById('start-date');
+    const ed = document.getElementById('end-date');
+    if (sd) sd.value = `${y}-${m}-01`;
+    if (ed) ed.value = last.toISOString().slice(0,10);
+  }
+  updateGroupSelect();
+  renderGroupsAndNames();
+
+  // グループの maxOnCall / maxSubDuty を 0 でバックフィル
+  const onCallCnt  = COLS.filter(c => c.isOnCall).length;
+  const subDutyCnt = COLS.filter(c => c.isSubduty).length;
+  let needsGroupsRerender = false;
+  groups.forEach(g => {
+    if (!g.maxOnCall)  g.maxOnCall  = {};
+    if (!g.maxSubDuty) g.maxSubDuty = {};
+    for (let i = 1; i <= onCallCnt; i++) {
+      if (g.maxOnCall[i] == null) { g.maxOnCall[i] = 0; needsGroupsRerender = true; }
+    }
+    for (let i = 1; i <= subDutyCnt; i++) {
+      if (g.maxSubDuty[i] == null) { g.maxSubDuty[i] = 0; needsGroupsRerender = true; }
+    }
+  });
+  if (needsGroupsRerender) { saveNames(); renderGroupsAndNames(); }
+
+  updateUndoButton();
+  updateOnCallButton();
+  updateSubDutyButton();
+  renderGrid();
+
+  _showUserBadge(Clerk.user);
+  _hideAuthGate();
+
+  // 初回ユーザーのみツアー
+  if (!localStorage.getItem(STORAGE_TUTORIAL)) openTour();
+}
+
+// グローバルなショートカット・クリックリスナーは認証状態に関わらず登録(常時必要)
+document.addEventListener('keydown', (e) => {
+  const tag = (e.target && e.target.tagName) || '';
+  if (e.key === 'Escape') {
+    closeNameClinicsPopup();
+    closeWorkDaysPopup();
+    const tt = document.getElementById('tour-tooltip');
+    if (tt && !tt.classList.contains('hidden')) closeTour();
+    return;
+  }
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+    e.preventDefault();
+    doUndo();
+  }
+});
+document.addEventListener('click', (e) => {
+  const popup = document.getElementById('name-clinics-popup');
+  if (popup && popup.classList.contains('show')) {
+    if (!popup.contains(e.target) && !(e.target.closest && e.target.closest('.name-tag'))) {
+      closeNameClinicsPopup();
+    }
+  }
+  const wdp = document.getElementById('work-days-popup');
+  if (wdp && wdp.classList.contains('show')) {
+    if (!wdp.contains(e.target) && !(e.target.closest && e.target.closest('[onclick*="openWorkDaysPopup"]'))) {
+      closeWorkDaysPopup();
+    }
+  }
+});
+
+// Clerk のロード完了を待ってから初期化
+async function _waitForClerk() {
+  const start = Date.now();
+  while (!(window.Clerk && Clerk.load)) {
+    if (Date.now() - start > 15000) throw new Error('Clerk load timeout');
+    await new Promise(r => setTimeout(r, 50));
+  }
+}
+
+(async function bootstrap() {
+  try {
+    await _waitForClerk();
+    _clerkLoc = await _loadClerkLoc();
+    await Clerk.load({ localization: _clerkLoc });
+  } catch (e) {
+    console.error('Clerk init failed', e);
+    const lt = document.getElementById('auth-loading-text');
+    if (lt) lt.innerHTML = '⚠ ログイン基盤の読込に失敗しました。ページを再読込してください。';
+    return;
+  }
+
+  // ① ログイン中 → クラウドモード
+  if (Clerk.user && Clerk.session) {
+    _mode = 'cloud';
+    try { localStorage.removeItem(GUEST_MODE_KEY); } catch (e) {}
+    hideGuestBanner();
+    await _initAppForUser();
+  }
+  // ② 過去にゲスト選択済 → ゲストモードで自動起動
+  else if (localStorage.getItem(GUEST_MODE_KEY) === '1') {
+    _mode = 'guest';
+    _hideAuthGate();
+    _initAppGuest();
+    showGuestBanner();
+  }
+  // ③ 初回訪問 → 認証ゲート表示(ログイン or ゲスト選択)
+  else {
+    _showAuthGate();
+  }
+
+  // ログイン状態の変化を監視
+  Clerk.addListener(async (resources) => {
+    if (resources.user && resources.session) {
+      _mode = 'cloud';
+      try { localStorage.removeItem(GUEST_MODE_KEY); } catch (e) {}
+      hideGuestBanner();
+      await _initAppForUser();
+    } else if (_mode !== 'guest') {
+      // ログアウトでゲストモードでないなら認証ゲート再表示
+      _showAuthGate();
+      const b = document.getElementById('user-badge');
+      if (b) b.style.display = 'none';
+    }
+  });
+})();
+</script>
+
+<!-- 勤務日(第N曜日)設定ポップアップ -->
+<div id="work-days-popup" role="dialog" aria-modal="false">
+  <div class="wdp-header">
+    <span id="wdp-title">勤務日</span>
+    <button class="wdp-close" onclick="closeWorkDaysPopup()" title="閉じる">×</button>
+  </div>
+  <div id="wdp-body"></div>
+  <div style="margin-top:6px;font-size:10px;color:#94a3b8;">クリックで ON/OFF 切替。閉じて反映</div>
+</div>
+
+<!-- 担当者クリックで開く外勤先割当ポップアップ -->
+<div id="name-clinics-popup" role="dialog" aria-modal="false">
+  <div class="ncp-header">
+    <span id="ncp-title">外勤先</span>
+    <button class="ncp-close" onclick="closeNameClinicsPopup()" title="閉じる">×</button>
+  </div>
+  <div id="ncp-list" class="ncp-list"></div>
+</div>
+
+<!-- 【無料プラン】Excel出力前の30秒広告モーダル -->
+<div id="ad-modal" role="dialog" aria-modal="true">
+  <div id="ad-modal-inner">
+    <div id="ad-modal-header">
+      <span class="left">📣 広告</span>
+      <span class="right"><span id="ad-countdown">30</span>秒後にダウンロードが始まります</span>
+    </div>
+    <div id="ad-modal-body">
+      <div class="ad-placeholder">
+        <div style="font-size:16px;font-weight:700;color:#1e40af;margin-bottom:8px;">
+          広告枠
+        </div>
+        <div style="font-size:12px;line-height:1.6;">
+          ここに広告が表示されます<br>
+          (無料プランでは Excel 出力前に 30 秒の広告が入ります)
+        </div>
+      </div>
+    </div>
+    <div id="ad-progress-wrap"><div id="ad-progress"></div></div>
+    <div id="ad-modal-footer">無料会員登録でデータがクラウド保存されます(開発中)</div>
+  </div>
+</div>
+
+</body>
+</html>
