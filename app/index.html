@@ -919,6 +919,12 @@
     .pre-assign-cell { min-width:50px; text-align:center; cursor:default; background:#f8fafc; }
     .pre-assign-cell.pre-filled { background:#dbeafe; font-weight:bold; cursor:pointer; color:#1d4ed8; }
     .pre-assign-cell.drag-over-cell { background:#bfdbfe !important; outline:2px dashed #3b82f6; }
+    /* 外勤先固定の自動表示セル */
+    .slot-cell.slot-fixed {
+      background: #f0f9ff; color: #0369a1;
+      font-weight: 600; font-size: 12px;
+      cursor: pointer;
+    }
     .slot-cell.drag-over-cell { background:#bfdbfe !important; outline:2px dashed #3b82f6; }
     .slot-cell.slot-preassign { background:#dbeafe !important; color:#1d4ed8; font-weight:bold; cursor:pointer; }
     .roster-table th.th-clinic.col-drag-over { background: #bfdbfe !important; outline: 2px dashed #3b82f6; cursor: grabbing; }
@@ -2237,6 +2243,12 @@ function renderPreviewEditable() {
       const preName = (preAssigned[d] && preAssigned[d][preKey]) || '';
       const preNichokuKey = `clinic_${ci}_nichoku`;
       const preNichokuName = (preAssigned[d] && preAssigned[d][preNichokuKey]) || '';
+      // 外勤先固定 (ライト以上) — preAssign 未設定 + 明示的✕ではない + オンコール/副直以外 のときに自動表示
+      let fixedHint = '';
+      if (isLightOrAbove() && !col.isOnCall && !col.isSubduty && !preName && raw !== '✕') {
+        const fn = pickFixedClinicName(col.label, d, w, isHoliday);
+        if (fn && names.includes(fn)) fixedHint = fn;
+      }
       const splitKey = `clinic_${ci}`;
       const splittable = col.isOnCall || col.isSubduty;
       const splitOn = splittable && isSplitAt(d, splitKey);
@@ -2271,6 +2283,14 @@ function renderPreviewEditable() {
             ${renderSub('当直', preName,        'clinic',         touOpen)}
           </div>
         </td>`;
+      } else if (fixedHint) {
+        // 外勤先固定 — 灰色っぽい青で「📌名前」表示。クリックで通常の○✕に戻せる
+        html += `<td class="slot-cell slot-fixed" data-d="${d}" data-ci="${ci}" ${ctxAttr}
+          title="固定設定で自動表示。クリックで○/✕に切替"
+          onclick="toggleSlot('${d}',${ci})"
+          ondragover="onDragOverPreAssign(event)"
+          ondragleave="onDragLeavePreAssign(event)"
+          ondrop="onDropPreAssign(event,'${d}','clinic',${ci})">📌${esc(fixedHint)}</td>`;
       } else {
         const cls = preName ? ' slot-preassign' : (raw==='○'?' slot-maru':raw==='✕'?' slot-batsu':'');
         const cellContent = preName || raw;
@@ -3128,18 +3148,11 @@ function computeRoster() {
       fixedMap[it.colLabel].push({ name: it.name, when: it.when || 'all' });
     });
   }
-  const WD_KEY = ['sun','mon','tue','wed','thu','fri','sat'];
-  const fixedMatch = (when, w, isHoliday) => {
-    if (when === 'all') return true;
-    if (when === 'weekday') return w >= 1 && w <= 5 && !isHoliday;
-    if (when === 'weekend') return w === 0 || w === 6 || isHoliday;
-    return when === WD_KEY[w];
-  };
-  // 列(colLabel)・日(d, w, isHoliday) に対して固定すべき担当者を返す。なければ ''
-  const pickFixedForCol = (colLabel, w, isHoliday) => {
+  // 列(colLabel)・日(dStr, w, isHoliday) に対して固定すべき担当者を返す。なければ ''
+  const pickFixedForCol = (colLabel, dStr, w, isHoliday) => {
     const arr = fixedMap[colLabel];
     if (!arr || !arr.length) return '';
-    const hit = arr.find(x => fixedMatch(x.when, w, isHoliday));
+    const hit = arr.find(x => fixedMatch(x.when, dStr, w, isHoliday));
     return hit ? hit.name : '';
   };
 
@@ -3304,9 +3317,9 @@ function computeRoster() {
         if (shift) registerAssign(preChosen, shift.endMs, recovH);
         return;
       }
-      if (!slotData[d] || slotData[d][ci] !== '○') return;
-      // 固定設定がある列は、その人がその日勤務OK(○)かつ未割当なら優先採用
-      const fixedName = pickFixedForCol(col.label, w, isHolidayDay);
+      // 固定設定: ユーザーが明示的に✕にした日はスキップ、それ以外は slot ○ 設定不要で優先採用
+      const slotIsX = slotData[d] && slotData[d][ci] === '✕';
+      const fixedName = slotIsX ? '' : pickFixedForCol(col.label, d, w, isHolidayDay);
       if (fixedName
           && onDuty.includes(fixedName)
           && !assignedToday.has(fixedName)) {
@@ -3316,6 +3329,7 @@ function computeRoster() {
         if (shift) registerAssign(fixedName, shift.endMs, recovH);
         return;
       }
+      if (!slotData[d] || slotData[d][ci] !== '○') return;
       const base = onDuty.filter(n =>
         !assignedToday.has(n) &&
         nameOutsides[n] && nameOutsides[n].includes(col.label)
@@ -5189,13 +5203,51 @@ function resetRecovery(label) {
 }
 
 // ----- 外勤先の固定 (月をまたいで永続) -----
-const FIXED_WHEN_OPTIONS = [
+// when は { type, w?, nth? } の形。旧形式 (string) との互換も維持。
+//   type: 'all' | 'weekday' | 'weekend' | 'weekly' | 'nth'
+//   w   : 0(日) ~ 6(土)  (weekly / nth で使用)
+//   nth : 1 ~ 5          (nth で使用、第N週)
+const FIXED_TYPE_OPTIONS = [
   ['all',     '毎日'],
   ['weekday', '平日のみ (月〜金)'],
   ['weekend', '土日祝のみ'],
-  ['mon','月曜のみ'],['tue','火曜のみ'],['wed','水曜のみ'],
-  ['thu','木曜のみ'],['fri','金曜のみ'],['sat','土曜のみ'],['sun','日曜のみ']
+  ['weekly',  '毎週○曜'],
+  ['nth',     '第N○曜のみ']
 ];
+const FIXED_WD_LABELS = ['日','月','火','水','木','金','土'];
+const FIXED_NTH_OPTIONS = [1,2,3,4,5];
+
+function normalizeWhen(when) {
+  if (when && typeof when === 'object') {
+    const t = when.type || 'all';
+    return { type: t, w: when.w ?? 1, nth: when.nth ?? 1 };
+  }
+  // 旧 string 互換
+  if (when === 'weekday' || when === 'weekend') return { type: when, w: 1, nth: 1 };
+  const wdMap = { sun:0, mon:1, tue:2, wed:3, thu:4, fri:5, sat:6 };
+  if (when in wdMap) return { type: 'weekly', w: wdMap[when], nth: 1 };
+  return { type: 'all', w: 1, nth: 1 };
+}
+function nthOfWeekday(dStr) {
+  const dt = new Date(dStr+'T00:00:00');
+  return Math.ceil(dt.getDate() / 7); // 1〜5
+}
+function fixedMatch(when, dStr, w, isHoliday) {
+  const nw = normalizeWhen(when);
+  if (nw.type === 'all')     return true;
+  if (nw.type === 'weekday') return w >= 1 && w <= 5 && !isHoliday;
+  if (nw.type === 'weekend') return w === 0 || w === 6 || isHoliday;
+  if (nw.type === 'weekly')  return nw.w === w;
+  if (nw.type === 'nth')     return nw.w === w && nw.nth === nthOfWeekday(dStr);
+  return false;
+}
+// グローバルから使う: 列ラベル+日付+曜日 から固定担当者を返す
+function pickFixedClinicName(colLabel, dStr, w, isHoliday) {
+  const arr = (assignmentRules.clinicFixed || []).filter(x => x && x.colLabel === colLabel && x.name);
+  if (!arr.length) return '';
+  const hit = arr.find(x => fixedMatch(x.when, dStr, w, isHoliday));
+  return hit ? hit.name : '';
+}
 function renderRulesClinicFixed() {
   const list = assignmentRules.clinicFixed || [];
   // 外勤列のみ (当直・副直・オンコール以外)
@@ -5207,22 +5259,31 @@ function renderRulesClinicFixed() {
       <div class="rm-empty">外勤列がまだありません。プレビュー右上の「＋」から外勤列を追加してから設定してください。</div>
     `;
   }
-  const colOpt = (sel) => clinicCols.map(c => `<option value="${escQ(c.label)}" ${c.label===sel?'selected':''}>${esc(c.label)}</option>`).join('');
+  const colOpt  = (sel) => clinicCols.map(c => `<option value="${escQ(c.label)}" ${c.label===sel?'selected':''}>${esc(c.label)}</option>`).join('');
   const nameOpt = (sel) => names.map(n => `<option value="${escQ(n)}" ${n===sel?'selected':''}>${esc(n)}</option>`).join('');
-  const whenOpt = (sel) => FIXED_WHEN_OPTIONS.map(([v,l]) => `<option value="${v}" ${v===sel?'selected':''}>${l}</option>`).join('');
-  const items = list.map((it, idx) => `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-    <select onchange="updateFixed(${idx},'colLabel',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
-      <option value="">— 外勤列 —</option>${colOpt(it.colLabel)}
-    </select>
-    <span style="color:#64748b;font-size:12px;">に</span>
-    <select onchange="updateFixed(${idx},'name',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
-      <option value="">— 担当者 —</option>${nameOpt(it.name)}
-    </select>
-    <span style="color:#64748b;font-size:12px;">を</span>
-    <select onchange="updateFixed(${idx},'when',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">${whenOpt(it.when || 'all')}</select>
-    <span style="color:#64748b;font-size:12px;">固定</span>
-    <button onclick="removeFixed(${idx})" class="rm-add-btn" style="margin-left:auto;color:#b91c1c;border-color:#fecaca;">削除</button>
-  </div>`).join('');
+  const typeOpt = (sel) => FIXED_TYPE_OPTIONS.map(([v,l]) => `<option value="${v}" ${v===sel?'selected':''}>${l}</option>`).join('');
+  const wdOpt   = (sel) => FIXED_WD_LABELS.map((l,i) => `<option value="${i}" ${i===sel?'selected':''}>${l}曜</option>`).join('');
+  const nthOpt  = (sel) => FIXED_NTH_OPTIONS.map(n => `<option value="${n}" ${n===sel?'selected':''}>第${n}</option>`).join('');
+  const items = list.map((it, idx) => {
+    const nw = normalizeWhen(it.when);
+    const showWd  = nw.type === 'weekly' || nw.type === 'nth';
+    const showNth = nw.type === 'nth';
+    return `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <select onchange="updateFixed(${idx},'colLabel',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+        <option value="">— 外勤列 —</option>${colOpt(it.colLabel)}
+      </select>
+      <span style="color:#64748b;font-size:12px;">に</span>
+      <select onchange="updateFixed(${idx},'name',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+        <option value="">— 担当者 —</option>${nameOpt(it.name)}
+      </select>
+      <span style="color:#64748b;font-size:12px;">を</span>
+      <select onchange="updateFixedType(${idx},this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">${typeOpt(nw.type)}</select>
+      ${showNth ? `<select onchange="updateFixedNth(${idx},this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">${nthOpt(nw.nth)}</select>` : ''}
+      ${showWd  ? `<select onchange="updateFixedWd(${idx},this.value)"  style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">${wdOpt(nw.w)}</select>`   : ''}
+      <span style="color:#64748b;font-size:12px;">で固定</span>
+      <button onclick="removeFixed(${idx})" class="rm-add-btn" style="margin-left:auto;color:#b91c1c;border-color:#fecaca;">削除</button>
+    </div>`;
+  }).join('');
   return `
     <h3>外勤先の固定</h3>
     <div class="rm-desc">特定の外勤列に毎月同じ人を自動で振り分ける設定。月をまたいでも引き継がれるので「平日日中の外来は毎月◯◯先生」といった運用に便利です。<br>
@@ -5233,18 +5294,52 @@ function renderRulesClinicFixed() {
 }
 function addFixed() {
   if (!assignmentRules.clinicFixed) assignmentRules.clinicFixed = [];
-  assignmentRules.clinicFixed.push({ colLabel: '', name: '', when: 'all' });
+  assignmentRules.clinicFixed.push({ colLabel: '', name: '', when: { type: 'all', w: 1, nth: 1 } });
   saveState(); switchRulesSection('clinicFixed');
 }
 function removeFixed(idx) {
   if (assignmentRules.clinicFixed) assignmentRules.clinicFixed.splice(idx, 1);
   saveState(); switchRulesSection('clinicFixed');
+  refreshEditableIfShown();
 }
 function updateFixed(idx, key, val) {
   if (assignmentRules.clinicFixed && assignmentRules.clinicFixed[idx]) {
     assignmentRules.clinicFixed[idx][key] = val;
     saveState();
+    refreshEditableIfShown();
   }
+}
+function updateFixedType(idx, val) {
+  const it = assignmentRules.clinicFixed && assignmentRules.clinicFixed[idx];
+  if (!it) return;
+  const cur = normalizeWhen(it.when);
+  it.when = { type: val, w: cur.w, nth: cur.nth };
+  saveState(); switchRulesSection('clinicFixed');
+  refreshEditableIfShown();
+}
+function updateFixedWd(idx, val) {
+  const it = assignmentRules.clinicFixed && assignmentRules.clinicFixed[idx];
+  if (!it) return;
+  const cur = normalizeWhen(it.when);
+  it.when = { type: cur.type, w: parseInt(val), nth: cur.nth };
+  saveState();
+  refreshEditableIfShown();
+}
+function updateFixedNth(idx, val) {
+  const it = assignmentRules.clinicFixed && assignmentRules.clinicFixed[idx];
+  if (!it) return;
+  const cur = normalizeWhen(it.when);
+  it.when = { type: cur.type, w: cur.w, nth: parseInt(val) };
+  saveState();
+  refreshEditableIfShown();
+}
+// 固定設定変更後、編集ビューが見えていれば再描画して即時反映
+function refreshEditableIfShown() {
+  const rv = document.getElementById('roster-view');
+  if (!rv) return;
+  if (storedRoster) return; // 自動生成済みなら触らない
+  if (rv.style.display === 'none') return;
+  renderPreviewEditable();
 }
 
 function renderRulesPair() {
