@@ -2243,9 +2243,9 @@ function renderPreviewEditable() {
       const preName = (preAssigned[d] && preAssigned[d][preKey]) || '';
       const preNichokuKey = `clinic_${ci}_nichoku`;
       const preNichokuName = (preAssigned[d] && preAssigned[d][preNichokuKey]) || '';
-      // 外勤先固定 (ライト以上) — preAssign 未設定 + 明示的✕ではない + オンコール/副直以外 のときに自動表示
+      // 外勤先固定 (ライト以上) — preAssign 未設定 + オンコール/副直以外 なら、列の○✕に関わらず常に自動表示
       let fixedHint = '';
-      if (isLightOrAbove() && !col.isOnCall && !col.isSubduty && !preName && raw !== '✕') {
+      if (isLightOrAbove() && !col.isOnCall && !col.isSubduty && !preName) {
         const fn = pickFixedClinicName(col.label, d, w, isHoliday);
         if (fn && names.includes(fn)) fixedHint = fn;
       }
@@ -3317,9 +3317,8 @@ function computeRoster() {
         if (shift) registerAssign(preChosen, shift.endMs, recovH);
         return;
       }
-      // 固定設定: ユーザーが明示的に✕にした日はスキップ、それ以外は slot ○ 設定不要で優先採用
-      const slotIsX = slotData[d] && slotData[d][ci] === '✕';
-      const fixedName = slotIsX ? '' : pickFixedForCol(col.label, d, w, isHolidayDay);
+      // 固定設定: 列の○✕に関わらず強制割当 (本人が休み希望=gridData✕ の場合のみフォールバック)
+      const fixedName = pickFixedForCol(col.label, d, w, isHolidayDay);
       if (fixedName
           && onDuty.includes(fixedName)
           && !assignedToday.has(fixedName)) {
