@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@clerk/backend": "^1.21.0",
-    "@neondatabase/serverless": "^0.10.0"
+    "@neondatabase/serverless": "^0.10.0",
+    "stripe": "^17.3.0"
   }
 }
