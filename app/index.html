@@ -1927,9 +1927,9 @@ function renderPreviewEditable() {
 
   // 勤務時間行 (回復時間はバンドのデフォルトを内部で使用、編集UIはライトプラン実装時に追加予定)
   html += `<tr class="biko-row"><td style="font-weight:bold;white-space:nowrap;padding:3px 6px;">勤務時間</td><td></td>`;
-  html += `<td><input class="biko-input" type="text" value="${esc(bikoData[COLS[0].label]||'')}" oninput="bikoData['${escQ(COLS[0].label)}']=this.value"></td>`;
+  html += `<td><input class="biko-input" type="text" value="${esc(bikoData[COLS[0].label]||'')}" oninput="bikoData['${escQ(COLS[0].label)}']=this.value;saveNames()"></td>`;
   COLS.slice(1).forEach(col => {
-    html += `<td><input class="biko-input" type="text" value="${esc(bikoData[col.label]||'')}" oninput="bikoData['${escQ(col.label)}']=this.value"></td>`;
+    html += `<td><input class="biko-input" type="text" value="${esc(bikoData[col.label]||'')}" oninput="bikoData['${escQ(col.label)}']=this.value;saveNames()"></td>`;
   });
   html += `<td></td></tr>`;
 
@@ -3112,9 +3112,9 @@ function renderRosterFromStored() {
   html += '</tr>';
 
   html += `<tr class="biko-row"><td style="font-weight:bold;padding:3px 6px;">勤務時間</td><td></td>`;
-  html += `<td><input class="biko-input" type="text" value="${esc(bikoData[COLS[0].label]||'')}" oninput="bikoData['${escQ(COLS[0].label)}']=this.value"></td>`;
+  html += `<td><input class="biko-input" type="text" value="${esc(bikoData[COLS[0].label]||'')}" oninput="bikoData['${escQ(COLS[0].label)}']=this.value;saveNames()"></td>`;
   COLS.slice(1).forEach(col => {
-    html += `<td><input class="biko-input" type="text" value="${esc(bikoData[col.label]||'')}" oninput="bikoData['${escQ(col.label)}']=this.value"></td>`;
+    html += `<td><input class="biko-input" type="text" value="${esc(bikoData[col.label]||'')}" oninput="bikoData['${escQ(col.label)}']=this.value;saveNames()"></td>`;
   });
   html += '</tr>';
 
