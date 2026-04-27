@@ -96,6 +96,93 @@
     }
     @keyframes auth-spin { to { transform: rotate(360deg); } }
 
+    /* ===== プランバッジ(タイトルバー右側) ===== */
+    .plan-badge {
+      display: none; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .03em;
+      padding: 3px 8px; border-radius: 999px;
+      cursor: pointer;
+    }
+    .plan-badge.show { display: inline-flex; }
+    .plan-badge.plan-free   { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+    .plan-badge.plan-light  { background: linear-gradient(135deg,#dbeafe,#e0e7ff); color: #1e40af; border: 1px solid #bfdbfe; }
+    .plan-badge.plan-pro    { background: linear-gradient(135deg,#fde68a,#fbbf24); color: #78350f; border: 1px solid #f59e0b; }
+    .plan-badge .plan-icon  { font-size: 11px; }
+    .plan-badge:hover       { filter: brightness(1.05); }
+
+    /* ===== アップグレードCTAモーダル ===== */
+    #upgrade-modal {
+      display: none; position: fixed; inset: 0; z-index: 9600;
+      background: rgba(15,23,42,.6);
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #upgrade-modal.show { display: flex; }
+    #upgrade-modal .um-card {
+      background: #fff; border-radius: 16px;
+      width: 480px; max-width: 100%;
+      padding: 32px 28px 24px; text-align: left;
+      box-shadow: 0 20px 48px rgba(0,0,0,.25);
+      position: relative;
+    }
+    #upgrade-modal .um-close {
+      position: absolute; top: 10px; right: 12px;
+      background: none; border: none;
+      font-size: 22px; line-height: 1; color: #94a3b8;
+      cursor: pointer; padding: 4px 8px;
+    }
+    #upgrade-modal .um-close:hover { color: #0f172a; }
+    #upgrade-modal .um-icon {
+      width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 14px;
+      background: linear-gradient(135deg,#3b82f6,#1e40af);
+      color: white; display: flex; align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 700;
+      box-shadow: 0 4px 12px rgba(30,64,175,.25);
+    }
+    #upgrade-modal .um-title {
+      font-size: 19px; font-weight: 700; color: #0f172a;
+      text-align: center; margin-bottom: 6px; letter-spacing: -.01em;
+    }
+    #upgrade-modal .um-price {
+      text-align: center; font-size: 13px; color: #475569;
+      margin-bottom: 20px;
+    }
+    #upgrade-modal .um-price strong {
+      font-size: 24px; color: #1e40af; font-weight: 800;
+      vertical-align: middle; letter-spacing: -.01em;
+    }
+    #upgrade-modal .um-perks {
+      list-style: none; padding: 14px; margin: 0 0 20px;
+      background: #f8fafc; border-radius: 10px;
+    }
+    #upgrade-modal .um-perks li {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 13px; color: #334155; padding: 6px 0;
+      line-height: 1.5;
+    }
+    #upgrade-modal .um-perks li::before {
+      content: '✓'; color: #059669; font-weight: 700; flex-shrink: 0;
+    }
+    #upgrade-modal .um-cta-primary {
+      display: block; width: 100%; padding: 13px;
+      background: #2563eb; color: white; font-weight: 700;
+      border: none; border-radius: 8px; cursor: pointer;
+      font-size: 14px; transition: background .15s, opacity .15s;
+      box-shadow: 0 1px 2px rgba(37,99,235,.2);
+    }
+    #upgrade-modal .um-cta-primary:hover { background: #1d4ed8; }
+    #upgrade-modal .um-cta-primary:disabled { opacity: .55; cursor: wait; }
+    #upgrade-modal .um-cta-secondary {
+      display: block; width: 100%; padding: 10px; margin-top: 8px;
+      background: #fff; color: #64748b; font-weight: 600;
+      border: 1px solid #e2e8f0; border-radius: 8px;
+      cursor: pointer; font-size: 13px;
+    }
+    #upgrade-modal .um-cta-secondary:hover { background: #f8fafc; color: #0f172a; }
+    #upgrade-modal .um-foot {
+      margin-top: 14px; font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.5;
+    }
+
     /* ===== 会員登録誘導モーダル(ゲスト時のダウンロード遮断用) ===== */
     #signup-prompt-modal {
       display: none; position: fixed; inset: 0; z-index: 9500;
@@ -1019,6 +1106,10 @@
       <span class="brand-tag">beta</span>
     </div>
   </div>
+  <span id="plan-badge" class="plan-badge plan-free" onclick="onPlanBadgeClick()" title="プラン管理">
+    <span class="plan-icon" id="plan-badge-icon">🆓</span>
+    <span id="plan-badge-label">無料</span>
+  </span>
   <span id="user-badge-wrap" style="display:none;">
     <span id="user-badge" onclick="toggleUserMenu(event)" title="メニューを開く">
       <span class="ub-avatar" id="ub-avatar">?</span>
@@ -1029,6 +1120,9 @@
       <div class="um-email" id="um-email">…</div>
       <button class="um-item" onclick="closeUserMenu();openUserMenu()">
         ⚙️ アカウント情報
+      </button>
+      <button class="um-item" id="um-plan-btn" onclick="closeUserMenu();onPlanBadgeClick()">
+        💳 プラン管理
       </button>
       <hr>
       <button class="um-item danger" onclick="closeUserMenu();signOut()">
@@ -3593,6 +3687,7 @@ function renderExcelPreview() {
 //   モード: 'cloud' (ログイン中・/api/state にPOST) | 'guest' (localStorage)
 // =============================================================
 let _mode = null;             // 'cloud' | 'guest' | null(未確定)
+let _plan = 'free';           // 'free' | 'light' (将来 'pro' 追加)。クラウド時はAPIから取得、ゲスト時は常にfree
 const GUEST_MODE_KEY = 'tochoku_guest_mode';
 const GUEST_DATA_KEY = 'tochoku_guest_data';
 let _undoSnapshot = null;     // メモリ上の1ステップundoスナップショット (JSON文字列)
@@ -3681,7 +3776,9 @@ async function _apiLoadState() {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.state || null;
+    // プラン情報もここで反映
+    if (data.plan) _plan = data.plan;
+    return { state: data.state || null, plan: data.plan || 'free' };
   } catch (e) {
     console.error('load state error', e);
     return null;
@@ -3761,24 +3858,31 @@ function updateUndoButton() {
 
 // 起動時に呼ばれる: APIから状態を取得して展開、UIを再描画
 async function loadStateFromCloud() {
-  const s = await _apiLoadState();
-  if (!s) return false;
-  _applyStateBlob(s);
-  if (currentDates.length) {
-    const sd = document.getElementById('start-date');
-    const ed = document.getElementById('end-date');
-    if (sd) sd.value = currentDates[0];
-    if (ed) ed.value = currentDates[currentDates.length-1];
+  const result = await _apiLoadState();
+  if (!result) return false;
+  // プラン取得
+  _plan = result.plan || 'free';
+  // 既存ステート復元(state が無くてもプランだけ反映済みなのでtrueを返す)
+  const s = result.state;
+  if (s) {
+    _applyStateBlob(s);
+    if (currentDates.length) {
+      const sd = document.getElementById('start-date');
+      const ed = document.getElementById('end-date');
+      if (sd) sd.value = currentDates[0];
+      if (ed) ed.value = currentDates[currentDates.length-1];
+    }
+    if (storedRoster) {
+      renderRosterFromStored();
+      const pb = document.getElementById('preview-btn');
+      if (pb) pb.style.display = 'inline-flex';
+      switchTab('roster');
+    } else if (currentDates.length) {
+      renderPreviewEditable();
+    }
+    return true;
   }
-  if (storedRoster) {
-    renderRosterFromStored();
-    const pb = document.getElementById('preview-btn');
-    if (pb) pb.style.display = 'inline-flex';
-    switchTab('roster');
-  } else if (currentDates.length) {
-    renderPreviewEditable();
-  }
-  return true;
+  return false;
 }
 
 // 旧来のloadNames/loadStateは互換のため残しているが何もしない
@@ -4620,6 +4724,141 @@ async function _loadClerkLoc() {
   return _clerkJaJPFallback;
 }
 
+// ===== プラン関連 =====
+// 現在のプランをUIに反映
+function applyPlanToUI() {
+  const badge = document.getElementById('plan-badge');
+  const icon  = document.getElementById('plan-badge-icon');
+  const label = document.getElementById('plan-badge-label');
+  const planBtn = document.getElementById('um-plan-btn');
+  if (!badge) return;
+  badge.classList.remove('plan-free', 'plan-light', 'plan-pro');
+  if (_mode === 'guest' || !_mode) {
+    // ゲストはバッジ非表示(認証ゲートに誘導するため)
+    badge.classList.remove('show');
+    return;
+  }
+  if (_plan === 'light') {
+    badge.classList.add('plan-light', 'show');
+    if (icon)  icon.textContent  = '⚡';
+    if (label) label.textContent = 'ライト';
+    if (planBtn) planBtn.textContent = '💳 プラン管理(解約)';
+  } else if (_plan === 'pro') {
+    badge.classList.add('plan-pro', 'show');
+    if (icon)  icon.textContent  = '👑';
+    if (label) label.textContent = 'プロ';
+    if (planBtn) planBtn.textContent = '💳 プラン管理(解約)';
+  } else {
+    badge.classList.add('plan-free', 'show');
+    if (icon)  icon.textContent  = '🆓';
+    if (label) label.textContent = '無料';
+    if (planBtn) planBtn.textContent = '⚡ ライトプランへ';
+  }
+}
+
+// プランバッジ・ユーザーメニューの「プラン管理」クリック時
+function onPlanBadgeClick() {
+  if (_mode === 'guest' || !_mode) {
+    // ゲスト時はそもそも見えないがフェイルセーフ
+    return;
+  }
+  if (_plan === 'light' || _plan === 'pro') {
+    // 契約者: Stripe Customer Portal を開く
+    openBillingPortal();
+  } else {
+    // 無料: アップグレードCTAを開く
+    showUpgradeModal();
+  }
+}
+
+function showUpgradeModal() {
+  const m = document.getElementById('upgrade-modal');
+  if (m) m.classList.add('show');
+}
+function closeUpgradeModal() {
+  const m = document.getElementById('upgrade-modal');
+  if (m) m.classList.remove('show');
+  // ボタンの状態も初期化
+  const btn = document.getElementById('um-cta-primary');
+  if (btn) { btn.disabled = false; btn.textContent = 'ライトプランに申し込む'; }
+}
+
+// 「ライトプランに申し込む」 → /api/checkout-session を呼んで Stripe にリダイレクト
+async function startUpgradeCheckout() {
+  if (!window.Clerk || !Clerk.session) {
+    alert('ログインが必要です');
+    return;
+  }
+  const btn = document.getElementById('um-cta-primary');
+  if (btn) { btn.disabled = true; btn.textContent = '処理中…'; }
+  try {
+    const token = await Clerk.session.getToken();
+    const res = await fetch('/api/checkout-session', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.detail || err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url; // Stripe Checkoutへ
+    } else {
+      throw new Error('checkout url missing');
+    }
+  } catch (e) {
+    console.error(e);
+    alert('決済画面の生成に失敗しました。時間をおいて再度お試しください。');
+    if (btn) { btn.disabled = false; btn.textContent = 'ライトプランに申し込む'; }
+  }
+}
+
+// 「プラン管理」 → /api/billing-portal を呼んで Stripe Portal にリダイレクト
+async function openBillingPortal() {
+  if (!window.Clerk || !Clerk.session) return;
+  try {
+    const token = await Clerk.session.getToken();
+    const res = await fetch('/api/billing-portal', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.detail || err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  } catch (e) {
+    console.error(e);
+    alert('プラン管理画面を開けませんでした。');
+  }
+}
+
+// プラン判定ヘルパー(他の機能ガードで使う)
+function isLightOrAbove() { return _plan === 'light' || _plan === 'pro'; }
+function isProPlan()      { return _plan === 'pro'; }
+
+// 戻りURL(?checkout=success など)の処理
+function handleCheckoutReturn() {
+  const url = new URL(window.location.href);
+  const checkout = url.searchParams.get('checkout');
+  if (!checkout) return;
+  // クエリを綺麗に消す
+  url.searchParams.delete('checkout');
+  history.replaceState({}, '', url.pathname + url.search + url.hash);
+  if (checkout === 'success') {
+    alert('ライトプランへのお申し込みありがとうございます!\n反映まで数秒かかる場合があります。');
+    // プラン情報を再取得して反映
+    setTimeout(async () => {
+      const r = await _apiLoadState();
+      if (r) { _plan = r.plan || 'free'; applyPlanToUI(); }
+    }, 1500);
+  } else if (checkout === 'cancel') {
+    // 何もしない or 軽くトースト
+  }
+}
+
 // ゲスト時にダウンロードボタンを押した際の会員登録誘導
 function showSignupPromptModal() {
   const m = document.getElementById('signup-prompt-modal');
@@ -4818,6 +5057,10 @@ async function _initAppForUser() {
   _showUserBadge(Clerk.user);
   _hideAuthGate();
 
+  // プランバッジ + ?checkout=... 戻り先処理
+  applyPlanToUI();
+  handleCheckoutReturn();
+
   // 初回ユーザーのみツアー
   if (!localStorage.getItem(STORAGE_TUTORIAL)) openTour();
 }
@@ -4935,6 +5178,35 @@ async function _waitForClerk() {
     <button class="ncp-close" onclick="closeNameClinicsPopup()" title="閉じる">×</button>
   </div>
   <div id="ncp-list" class="ncp-list"></div>
+</div>
+
+<!-- ライトプラン アップグレード CTA モーダル -->
+<div id="upgrade-modal" role="dialog" aria-modal="true">
+  <div class="um-card">
+    <button class="um-close" onclick="closeUpgradeModal()" title="閉じる">×</button>
+    <div class="um-icon" aria-hidden="true">⚡</div>
+    <div class="um-title">ライトプランで快適に</div>
+    <div class="um-price"><strong>月 300円</strong>(税込)</div>
+    <ul class="um-perks">
+      <li>Excel出力時の30秒広告を非表示</li>
+      <li>戻る/やり直し 無制限</li>
+      <li>セル間ドラッグ&ドロップで割当変更</li>
+      <li>重複・矛盾の赤色警告表示</li>
+      <li>途中作業を全部自動保存(中断地点から復帰)</li>
+      <li>過去当直表の月別アーカイブ</li>
+      <li>振り分け条件詳細設定(連続勤務制限・NG・過去2ヶ月考慮 など)</li>
+      <li>回復時間のカスタマイズ</li>
+    </ul>
+    <button id="um-cta-primary" class="um-cta-primary" onclick="startUpgradeCheckout()">
+      ライトプランに申し込む
+    </button>
+    <button class="um-cta-secondary" onclick="closeUpgradeModal()">
+      あとで
+    </button>
+    <div class="um-foot">
+      解約はいつでも可能。Stripeの請求ポータルから手続きできます。
+    </div>
+  </div>
 </div>
 
 <!-- ゲスト時のダウンロード操作で会員登録を促すモーダル -->
