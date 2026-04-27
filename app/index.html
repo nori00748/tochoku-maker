@@ -5349,13 +5349,37 @@ function toggleFixedNth(idx, n) {
   saveState(); switchRulesSection('clinicFixed');
   refreshEditableIfShown();
 }
-// 固定設定変更後、編集ビューが見えていれば再描画して即時反映
+// 固定設定変更後、現在の表示に即時反映する
+//  - 編集ビュー (storedRoster なし): renderPreviewEditable で固定セルを再描画
+//  - 出来上がり図 (storedRoster あり): 各行の外勤列を固定で上書きしてから再描画
 function refreshEditableIfShown() {
   const rv = document.getElementById('roster-view');
   if (!rv) return;
-  if (storedRoster) return; // 自動生成済みなら触らない
+  if (storedRoster) {
+    applyFixedToStoredRoster();
+    renderRosterFromStored();
+    return;
+  }
   if (rv.style.display === 'none') return;
   renderPreviewEditable();
+}
+
+// storedRoster の外勤列に固定担当者を上書き (副直/オンコール列は対象外)
+// 固定を解除した日の旧割当は残る (ユーザーが手動で編集可能)
+function applyFixedToStoredRoster() {
+  if (!storedRoster) return;
+  storedRoster.forEach(row => {
+    const dt = row.dt || new Date(row.d+'T00:00:00');
+    const w = dt.getDay();
+    const isHoliday = !!holidayDates[row.d];
+    COLS.slice(1).forEach((col, ci) => {
+      if (col.isOnCall || col.isSubduty) return;
+      const fn = pickFixedClinicName(col.label, row.d, w, isHoliday);
+      if (fn && names.includes(fn)) {
+        row.clinics[ci] = fn;
+      }
+    });
+  });
 }
 
 function renderRulesPair() {
