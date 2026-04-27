@@ -1055,7 +1055,7 @@
       <h2>📋 出来上がり図</h2>
       <div id="preview-header-right">
         <button class="btn btn-outline" id="undo-btn" onclick="doUndo()" title="直前の操作を1つだけ戻す (Ctrl+Z)" disabled style="opacity:.4;cursor:not-allowed;">↶ 戻る</button>
-        <button class="btn btn-outline" id="preview-btn" onclick="openExcelPreview()">📄 プレビュー</button>
+        <button class="btn btn-primary" id="preview-btn" onclick="openExcelPreview()">📄 プレビュー</button>
       </div>
     </div>
     <div id="preview-body">
@@ -3788,6 +3788,9 @@ function loadState() { return false; /* 互換用ダミー */ }
 // ===== Resizer =====
 (function() {
   const R=document.getElementById('resizer'), T=document.getElementById('preview-pane'), B=document.getElementById('control-pane');
+  // 最小高さ: プレビュー側は出来上がり図が見える最小、操作画面側は「作る」ボタンが切れないライン
+  const MIN_TOP = 120;
+  const MIN_BOT = 220;
   let sy,sh,bh;
   R.addEventListener('mousedown', e => {
     sy=e.clientY; sh=T.offsetHeight; bh=B.offsetHeight;
@@ -3796,7 +3799,18 @@ function loadState() { return false; /* 互換用ダミー */ }
     document.addEventListener('mouseup',up);
     e.preventDefault();
   });
-  function mv(e){ const dy=e.clientY-sy; T.style.flex='none'; B.style.flex='none'; T.style.height=Math.max(80,sh+dy)+'px'; B.style.height=Math.max(80,bh-dy)+'px'; }
+  function mv(e){
+    const dy = e.clientY - sy;
+    const total = sh + bh;
+    let newTop = sh + dy;
+    let newBot = bh - dy;
+    // 一方が下限未満になりそうなら、もう一方を引き伸ばしてクランプ
+    if (newTop < MIN_TOP) { newTop = MIN_TOP; newBot = total - MIN_TOP; }
+    if (newBot < MIN_BOT) { newBot = MIN_BOT; newTop = total - MIN_BOT; }
+    T.style.flex = 'none'; B.style.flex = 'none';
+    T.style.height = newTop + 'px';
+    B.style.height = newBot + 'px';
+  }
   function up(){ R.classList.remove('dragging'); document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
 })();
 
