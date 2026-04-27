@@ -4100,16 +4100,51 @@ function saveState() {
   _persist();
 }
 
-// undo: スタックから1ステップ戻す
+// undo: スタックから1ステップ戻す (フルリロードせず即時再描画)
 function doUndo() {
   if (!_undoStack.length) return;
   try {
     const snapStr = _undoStack.pop();
     const snap = JSON.parse(snapStr);
-    _applyStateBlob(snap);
+    _isApplyingState = true;
+    try {
+      // 削除済みキーが残らないよう、復元前に主要な可変状態を一旦クリア
+      [nameGroups, nameOutsides, slotData, dutyOpen, bikoData, gakkaiData,
+       holidayDates, colBand, preAssigned, splitDays, dutyOpenNichoku,
+       slotDataNichoku, recoveryData, workPatterns, dayModes, gridData]
+        .forEach(o => Object.keys(o).forEach(k => delete o[k]));
+      storedRoster = null;
+      _applyStateBlob(snap);
+    } finally {
+      _isApplyingState = false;
+    }
     _apiSaveStateDebounced(); // 戻した状態を保存
-    location.reload();        // 描画をクリーンに反映
-  } catch(e) {}
+    // 全UIを即時再描画
+    if (currentDates.length) {
+      const sd = document.getElementById('start-date');
+      const ed = document.getElementById('end-date');
+      if (sd) sd.value = currentDates[0];
+      if (ed) ed.value = currentDates[currentDates.length-1];
+      applyWorkPatternsToDates();
+    }
+    updateGroupSelect();
+    renderGroupsAndNames();
+    renderGrid();
+    if (storedRoster) {
+      renderRosterFromStored();
+      const pb = document.getElementById('preview-btn');
+      if (pb) pb.style.display = 'inline-flex';
+      switchTab('roster');
+    } else if (currentDates.length) {
+      renderPreviewEditable();
+      const pb = document.getElementById('preview-btn');
+      if (pb) pb.style.display = 'none';
+      switchTab('roster');
+    }
+    if (typeof updateOnCallButton  === 'function') updateOnCallButton();
+    if (typeof updateSubDutyButton === 'function') updateSubDutyButton();
+    updateUndoButton();
+  } catch(e) { console.error('undo error', e); }
 }
 
 function updateUndoButton() {
