@@ -1393,15 +1393,14 @@ let dutyOpenNichoku = {};   // 当直分割時、日直側の ○/✕: date -> '
 let slotDataNichoku = {};   // オンコール分割時、日直側の ○/✕: date -> { ci -> '○' | '✕' }
 let recoveryData = {};      // 回復時間(h): 列ラベル -> number。未設定は 勤務帯のデフォルトを使用
 // ===== 振り分け条件 詳細設定(ライト以上) =====
-// continuous : { enabled, maxDays }                     ... 連続勤務日数の上限
-// ngList     : [{ name, dates: [YYYY-MM-DD, ...] }]      ... 個別NG指定
-// pairList   : [{ a, b, mode: 'avoid'|'prefer' }]        ... ペア回避/推奨
-// history    : { enabled, mode: 'soft'|'hard', months: 1|2 } ... 先月/先々月の当直回数を考慮
+// pairList    : [{ a, b, mode: 'avoid'|'prefer' }]        ... ペア回避/推奨
+// history     : { enabled, mode: 'soft'|'hard', months: 1|2 } ... 先月/先々月の当直回数を考慮
+// clinicFixed : [{ colLabel, name, when: 'all'|'weekday'|'weekend'|'mon'..'sun' }]
+//                ... 外勤列を特定の人で固定 (月をまたいで永続)
 let assignmentRules = {
-  continuous: { enabled: false, maxDays: 2 },
-  ngList: [],
   pairList: [],
-  history: { enabled: false, mode: 'soft', months: 1 }
+  history: { enabled: false, mode: 'soft', months: 1 },
+  clinicFixed: []
 };
 let _currentRulesSection = 'recovery';
 // 過去当直回数 (Phase 3 のアーカイブ取得後に埋まる)。 name -> 平日+土日祝 の合算回数
@@ -3104,18 +3103,6 @@ function computeRoster() {
 
   // ── 振り分け条件詳細設定 (ライト以上) ──
   const rulesEnabled = isLightOrAbove();
-  // 担当者ごとの過去N日間の被割当日付セット (連続勤務制限用)
-  const assignedDays = {};
-  names.forEach(n => { assignedDays[n] = new Set(); });
-  // NG: name -> Set(dates)
-  const ngMap = {};
-  if (rulesEnabled && Array.isArray(assignmentRules.ngList)) {
-    assignmentRules.ngList.forEach(it => {
-      if (!it || !it.name) return;
-      if (!ngMap[it.name]) ngMap[it.name] = new Set();
-      (it.dates||[]).forEach(d => ngMap[it.name].add(d));
-    });
-  }
   // ペア: name -> [{ partner, mode }]
   const pairMap = {};
   if (rulesEnabled && Array.isArray(assignmentRules.pairList)) {
@@ -3127,25 +3114,33 @@ function computeRoster() {
       pairMap[p.b].push({ partner: p.a, mode: p.mode || 'avoid' });
     });
   }
-  const isNG = (name, d) => rulesEnabled && ngMap[name] && ngMap[name].has(d);
-  // 連続勤務制限: 当該日含めてmaxDays連続を超えるか
-  const violatesContinuous = (name, d) => {
-    if (!rulesEnabled || !assignmentRules.continuous.enabled) return false;
-    const lim = assignmentRules.continuous.maxDays || 2;
-    // 今日まで含めて連続している日数を数える
-    let cnt = 1; // today
-    let cur = d;
-    for (let i = 0; i < lim; i++) {
-      const prev = new Date(cur+'T00:00:00'); prev.setDate(prev.getDate()-1);
-      const ps = prev.toISOString().slice(0,10);
-      if (assignedDays[name].has(ps)) { cnt++; cur = ps; } else break;
-    }
-    return cnt > lim;
-  };
   // ペア回避: 既に同日に割当済みのパートナーが居ればNG
   const violatesPair = (name, todaySet) => {
     if (!rulesEnabled || !pairMap[name]) return false;
     return pairMap[name].some(p => p.mode === 'avoid' && todaySet.has(p.partner));
+  };
+  // 外勤先固定: colLabel -> [{ name, when }]
+  const fixedMap = {};
+  if (rulesEnabled && Array.isArray(assignmentRules.clinicFixed)) {
+    assignmentRules.clinicFixed.forEach(it => {
+      if (!it || !it.colLabel || !it.name) return;
+      if (!fixedMap[it.colLabel]) fixedMap[it.colLabel] = [];
+      fixedMap[it.colLabel].push({ name: it.name, when: it.when || 'all' });
+    });
+  }
+  const WD_KEY = ['sun','mon','tue','wed','thu','fri','sat'];
+  const fixedMatch = (when, w, isHoliday) => {
+    if (when === 'all') return true;
+    if (when === 'weekday') return w >= 1 && w <= 5 && !isHoliday;
+    if (when === 'weekend') return w === 0 || w === 6 || isHoliday;
+    return when === WD_KEY[w];
+  };
+  // 列(colLabel)・日(d, w, isHoliday) に対して固定すべき担当者を返す。なければ ''
+  const pickFixedForCol = (colLabel, w, isHoliday) => {
+    const arr = fixedMap[colLabel];
+    if (!arr || !arr.length) return '';
+    const hit = arr.find(x => fixedMatch(x.when, w, isHoliday));
+    return hit ? hit.name : '';
   };
 
   const dayStartMs = (d) => new Date(d+'T00:00:00').getTime();
@@ -3176,10 +3171,6 @@ function computeRoster() {
     const avail = availAfter(endMs, recoveryH);
     if (avail > availableFrom[name]) availableFrom[name] = avail;
   };
-  // 連続勤務制限のため、その日の被割当を別途記録 (時刻情報なし版)
-  const registerAssignedDay = (name, d) => {
-    if (assignedDays[name]) assignedDays[name].add(d);
-  };
 
   return currentDates.map(d => {
     const dt = new Date(d+'T00:00:00'), w = dt.getDay();
@@ -3193,18 +3184,14 @@ function computeRoster() {
     const preDay = preAssigned[d] || {};
 
     // ── 段階的フォールバック付き候補選出 ──
-    // Tier1: 時間制約+上限+詳細ルール(NG/連続/ペア) を両方満たす (通常)
-    // Tier2: 時間制約と「連続/ペア」を緩和 (ただし上限とNGは守る)
-    // Tier3: 上限も超過 (勤務者不足時の最終手段)。NGは厳守。上限=0 は「割当対象外」として厳格に守る
+    // Tier1: 時間制約+上限+ペア(avoid) を満たす (通常)
+    // Tier2: 時間制約とペアを緩和、上限は守る
+    // Tier3: 上限も超過 (勤務者不足時の最終手段)。上限=0 は「割当対象外」として厳格に守る
     const pickWithFallback = (baseCandidates, withinMax, countsRef, maxFn, startMs) => {
-      // NG はどの段階でも除外 (ハード制約)
-      const notNG = (n) => !isNG(n, d);
-      // ペア(avoid) と 連続勤務 は Tier1 で考慮、Tier2 以降は緩和
-      const ruleTier1 = (n) =>
-        notNG(n) && !violatesContinuous(n, d) && !violatesPair(n, assignedToday);
+      const ruleTier1 = (n) => !violatesPair(n, assignedToday);
       let pool = baseCandidates.filter(n => ruleTier1(n) && withinMax(n) && (startMs == null || canAssignAt(n, startMs)));
-      if (!pool.length) pool = baseCandidates.filter(n => notNG(n) && withinMax(n));
-      if (!pool.length) pool = baseCandidates.filter(n => notNG(n) && (!maxFn || maxFn(n) > 0));
+      if (!pool.length) pool = baseCandidates.filter(withinMax);
+      if (!pool.length) pool = baseCandidates.filter(n => !maxFn || maxFn(n) > 0);
       if (!pool.length) return '';
       shuffle(pool);
       sortByFairness(pool, countsRef, maxFn);
@@ -3234,7 +3221,6 @@ function computeRoster() {
       if (!chosen) return '';
       dutyCounts[chosen] = (dutyCounts[chosen]||0) + 1;
       assignedToday.add(chosen);
-      registerAssignedDay(chosen, d);
       if (shift) registerAssign(chosen, shift.endMs, recovH);
       return chosen;
     };
@@ -3291,8 +3277,7 @@ function computeRoster() {
           }
           if (!chosen) return '';
           assignedToday.add(chosen);
-          registerAssignedDay(chosen, d);
-          counts[chosen][idx] = (counts[chosen][idx]||0) + 1;
+              counts[chosen][idx] = (counts[chosen][idx]||0) + 1;
           if (useShift) registerAssign(chosen, useShift.endMs, useRecov);
           return chosen;
         };
@@ -3316,11 +3301,21 @@ function computeRoster() {
         clinics[ci] = preChosen;
         clinicCounts[preChosen][col.label] = (clinicCounts[preChosen][col.label]||0)+1;
         assignedToday.add(preChosen);
-        registerAssignedDay(preChosen, d);
         if (shift) registerAssign(preChosen, shift.endMs, recovH);
         return;
       }
       if (!slotData[d] || slotData[d][ci] !== '○') return;
+      // 固定設定がある列は、その人がその日勤務OK(○)かつ未割当なら優先採用
+      const fixedName = pickFixedForCol(col.label, w, isHolidayDay);
+      if (fixedName
+          && onDuty.includes(fixedName)
+          && !assignedToday.has(fixedName)) {
+        clinics[ci] = fixedName;
+        clinicCounts[fixedName][col.label] = (clinicCounts[fixedName][col.label]||0)+1;
+        assignedToday.add(fixedName);
+        if (shift) registerAssign(fixedName, shift.endMs, recovH);
+        return;
+      }
       const base = onDuty.filter(n =>
         !assignedToday.has(n) &&
         nameOutsides[n] && nameOutsides[n].includes(col.label)
@@ -3338,7 +3333,6 @@ function computeRoster() {
       clinics[ci] = chosen;
       clinicCounts[chosen][col.label] = (clinicCounts[chosen][col.label]||0)+1;
       assignedToday.add(chosen);
-      registerAssignedDay(chosen, d);
       if (shift) registerAssign(chosen, shift.endMs, recovH);
     });
 
@@ -3994,11 +3988,9 @@ function _applyStateBlob(s) {
     if (s.workPatterns)    Object.assign(workPatterns, s.workPatterns);
     if (s.dayModes)        Object.assign(dayModes, s.dayModes);
     if (s.assignmentRules && typeof s.assignmentRules === 'object') {
-      // 既存値を残しつつ、保存された値で上書き
-      if (s.assignmentRules.continuous) Object.assign(assignmentRules.continuous, s.assignmentRules.continuous);
-      if (Array.isArray(s.assignmentRules.ngList)) assignmentRules.ngList = s.assignmentRules.ngList;
-      if (Array.isArray(s.assignmentRules.pairList)) assignmentRules.pairList = s.assignmentRules.pairList;
+      if (Array.isArray(s.assignmentRules.pairList))    assignmentRules.pairList = s.assignmentRules.pairList;
       if (s.assignmentRules.history) Object.assign(assignmentRules.history, s.assignmentRules.history);
+      if (Array.isArray(s.assignmentRules.clinicFixed)) assignmentRules.clinicFixed = s.assignmentRules.clinicFixed;
     }
     if (s.roster) {
       storedRoster = s.roster.map(row => ({...row, dt: new Date(row.d+'T00:00:00')}));
@@ -5144,11 +5136,10 @@ function switchRulesSection(name) {
   });
   const pane = document.getElementById('rm-pane');
   if (!pane) return;
-  if      (name === 'recovery')   pane.innerHTML = renderRulesRecovery();
-  else if (name === 'continuous') pane.innerHTML = renderRulesContinuous();
-  else if (name === 'ng')         pane.innerHTML = renderRulesNG();
-  else if (name === 'pair')       pane.innerHTML = renderRulesPair();
-  else if (name === 'history')    pane.innerHTML = renderRulesHistory();
+  if      (name === 'recovery')    pane.innerHTML = renderRulesRecovery();
+  else if (name === 'clinicFixed') pane.innerHTML = renderRulesClinicFixed();
+  else if (name === 'pair')        pane.innerHTML = renderRulesPair();
+  else if (name === 'history')     pane.innerHTML = renderRulesHistory();
 }
 
 // ----- 各セクションの描画 -----
@@ -5171,14 +5162,14 @@ function renderRulesRecovery() {
     </tr>`;
   }).join('');
   return `
-    <h3>回復時間</h3>
-    <div class="rm-desc">勤務終了後、次の勤務までに必要な休息時間(時間単位)。回復時間が経過していない人は次の勤務に振り分けられません。<br>
-    勤務帯ごとのデフォルト値: 外来1h / 日直8h / 当直8h / 日当直24h</div>
+    <h3>次回勤務許可時間</h3>
+    <div class="rm-desc">勤務終了から「次の勤務に入れるようになるまで」の最低時間(時間単位)。例: 当直に8時間と設定すると、当直明けの人は8時間経過するまで他の勤務には振り分けられません。<br>
+    勤務帯ごとの初期値: 外来1h / 日直8h / 当直8h / 日当直24h</div>
     <table class="rm-table">
       <thead><tr>
         <th style="text-align:left;">列ラベル</th>
         <th>勤務帯</th>
-        <th>回復時間</th>
+        <th>許可時間</th>
         <th></th>
       </tr></thead>
       <tbody>${rows || '<tr><td colspan="4" class="rm-empty">列がまだありません</td></tr>'}</tbody>
@@ -5197,72 +5188,62 @@ function resetRecovery(label) {
   switchRulesSection('recovery');
 }
 
-function renderRulesContinuous() {
-  const r = assignmentRules.continuous;
-  return `
-    <h3>連続勤務制限</h3>
-    <div class="rm-desc">同じ人が連続で勤務(当直/オンコール/副直)に振り分けられる最大日数。回復時間とは別に、N日連続を超えないように振り分けます。</div>
-    <div class="rm-section">
-      <div class="rm-row">
-        <label><input type="checkbox" ${r.enabled?'checked':''} onchange="updateContinuous('enabled', this.checked)"> 連続勤務制限を有効にする</label>
-      </div>
-      <div class="rm-row">
-        <label>最大連続日数</label>
-        <input type="number" min="1" max="14" value="${r.maxDays}" onchange="updateContinuous('maxDays', this.value)" ${r.enabled?'':'disabled'}>
-        <span class="rm-unit">日まで連続OK</span>
-        <span class="rm-help">例: 2 → 2日連続まで許可、3日連続は不可</span>
-      </div>
-    </div>
-  `;
-}
-function updateContinuous(key, val) {
-  if (key === 'enabled') assignmentRules.continuous.enabled = !!val;
-  else if (key === 'maxDays') {
-    const v = parseInt(val); if (!isNaN(v) && v > 0) assignmentRules.continuous.maxDays = v;
+// ----- 外勤先の固定 (月をまたいで永続) -----
+const FIXED_WHEN_OPTIONS = [
+  ['all',     '毎日'],
+  ['weekday', '平日のみ (月〜金)'],
+  ['weekend', '土日祝のみ'],
+  ['mon','月曜のみ'],['tue','火曜のみ'],['wed','水曜のみ'],
+  ['thu','木曜のみ'],['fri','金曜のみ'],['sat','土曜のみ'],['sun','日曜のみ']
+];
+function renderRulesClinicFixed() {
+  const list = assignmentRules.clinicFixed || [];
+  // 外勤列のみ (当直・副直・オンコール以外)
+  const clinicCols = COLS.slice(1).filter(c => !c.isOnCall && !c.isSubduty);
+  if (!clinicCols.length) {
+    return `
+      <h3>外勤先の固定</h3>
+      <div class="rm-desc">特定の外勤列に毎月同じ人を自動で振り分ける設定です。</div>
+      <div class="rm-empty">外勤列がまだありません。プレビュー右上の「＋」から外勤列を追加してから設定してください。</div>
+    `;
   }
-  saveState();
-  if (_currentRulesSection === 'continuous') switchRulesSection('continuous');
-}
-
-function renderRulesNG() {
-  const list = assignmentRules.ngList;
-  const items = list.map((it, idx) => {
-    const dateChips = (it.dates||[]).map((d,di) => `<span style="display:inline-block;background:#eef2ff;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:11px;margin:2px;">${esc(d)}<button onclick="removeNGDate(${idx},${di})" style="background:none;border:none;color:#1e40af;cursor:pointer;margin-left:4px;font-weight:700;">×</button></span>`).join('');
-    return `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-        <select onchange="updateNGName(${idx}, this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
-          <option value="">— 担当者を選択 —</option>
-          ${names.map(n => `<option value="${escQ(n)}" ${n===it.name?'selected':''}>${esc(n)}</option>`).join('')}
-        </select>
-        <input type="date" onchange="addNGDate(${idx}, this.value); this.value='';" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
-        <button onclick="removeNG(${idx})" class="rm-add-btn" style="margin-left:auto;color:#b91c1c;border-color:#fecaca;">削除</button>
-      </div>
-      <div>${dateChips || '<span class="rm-help">日付ピッカーから追加してください</span>'}</div>
-    </div>`;
-  }).join('');
+  const colOpt = (sel) => clinicCols.map(c => `<option value="${escQ(c.label)}" ${c.label===sel?'selected':''}>${esc(c.label)}</option>`).join('');
+  const nameOpt = (sel) => names.map(n => `<option value="${escQ(n)}" ${n===sel?'selected':''}>${esc(n)}</option>`).join('');
+  const whenOpt = (sel) => FIXED_WHEN_OPTIONS.map(([v,l]) => `<option value="${v}" ${v===sel?'selected':''}>${l}</option>`).join('');
+  const items = list.map((it, idx) => `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <select onchange="updateFixed(${idx},'colLabel',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+      <option value="">— 外勤列 —</option>${colOpt(it.colLabel)}
+    </select>
+    <span style="color:#64748b;font-size:12px;">に</span>
+    <select onchange="updateFixed(${idx},'name',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+      <option value="">— 担当者 —</option>${nameOpt(it.name)}
+    </select>
+    <span style="color:#64748b;font-size:12px;">を</span>
+    <select onchange="updateFixed(${idx},'when',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">${whenOpt(it.when || 'all')}</select>
+    <span style="color:#64748b;font-size:12px;">固定</span>
+    <button onclick="removeFixed(${idx})" class="rm-add-btn" style="margin-left:auto;color:#b91c1c;border-color:#fecaca;">削除</button>
+  </div>`).join('');
   return `
-    <h3>NG設定</h3>
-    <div class="rm-desc">特定の担当者を特定の日付に振り分けない設定。学会・休暇・私用などで対応できます。</div>
+    <h3>外勤先の固定</h3>
+    <div class="rm-desc">特定の外勤列に毎月同じ人を自動で振り分ける設定。月をまたいでも引き継がれるので「平日日中の外来は毎月◯◯先生」といった運用に便利です。<br>
+    ※ その日が勤務不可(✕)の場合は通常通り別の人にフォールバックします。</div>
     ${items || '<div class="rm-empty">まだ設定されていません</div>'}
-    <div style="margin-top:12px;"><button class="rm-add-btn" onclick="addNG()">＋ NG行を追加</button></div>
+    <div style="margin-top:12px;"><button class="rm-add-btn" onclick="addFixed()">＋ 固定設定を追加</button></div>
   `;
 }
-function addNG() { assignmentRules.ngList.push({ name: '', dates: [] }); saveState(); switchRulesSection('ng'); }
-function removeNG(idx) { assignmentRules.ngList.splice(idx,1); saveState(); switchRulesSection('ng'); }
-function updateNGName(idx, val) { if (assignmentRules.ngList[idx]) { assignmentRules.ngList[idx].name = val; saveState(); } }
-function addNGDate(idx, d) {
-  if (!d || !assignmentRules.ngList[idx]) return;
-  if (!assignmentRules.ngList[idx].dates) assignmentRules.ngList[idx].dates = [];
-  if (!assignmentRules.ngList[idx].dates.includes(d)) {
-    assignmentRules.ngList[idx].dates.push(d);
-    assignmentRules.ngList[idx].dates.sort();
-    saveState(); switchRulesSection('ng');
-  }
+function addFixed() {
+  if (!assignmentRules.clinicFixed) assignmentRules.clinicFixed = [];
+  assignmentRules.clinicFixed.push({ colLabel: '', name: '', when: 'all' });
+  saveState(); switchRulesSection('clinicFixed');
 }
-function removeNGDate(idx, di) {
-  if (assignmentRules.ngList[idx] && assignmentRules.ngList[idx].dates) {
-    assignmentRules.ngList[idx].dates.splice(di,1);
-    saveState(); switchRulesSection('ng');
+function removeFixed(idx) {
+  if (assignmentRules.clinicFixed) assignmentRules.clinicFixed.splice(idx, 1);
+  saveState(); switchRulesSection('clinicFixed');
+}
+function updateFixed(idx, key, val) {
+  if (assignmentRules.clinicFixed && assignmentRules.clinicFixed[idx]) {
+    assignmentRules.clinicFixed[idx][key] = val;
+    saveState();
   }
 }
 
@@ -5843,15 +5824,13 @@ async function _waitForClerk() {
       <nav class="rm-nav" id="rm-nav">
         <div class="rm-nav-section">基本</div>
         <button class="rm-nav-item active" data-section="recovery" onclick="switchRulesSection('recovery')">
-          <span class="rm-nav-ic">⏱</span>回復時間
+          <span class="rm-nav-ic">⏱</span>次回勤務許可時間
         </button>
-        <button class="rm-nav-item" data-section="continuous" onclick="switchRulesSection('continuous')">
-          <span class="rm-nav-ic">🔁</span>連続勤務制限
+        <div class="rm-nav-section">外勤・固定</div>
+        <button class="rm-nav-item" data-section="clinicFixed" onclick="switchRulesSection('clinicFixed')">
+          <span class="rm-nav-ic">📌</span>外勤先の固定
         </button>
         <div class="rm-nav-section">個別調整</div>
-        <button class="rm-nav-item" data-section="ng" onclick="switchRulesSection('ng')">
-          <span class="rm-nav-ic">🚫</span>NG設定
-        </button>
         <button class="rm-nav-item" data-section="pair" onclick="switchRulesSection('pair')">
           <span class="rm-nav-ic">👥</span>ペア条件
         </button>
@@ -5879,7 +5858,7 @@ async function _waitForClerk() {
       <li>重複・矛盾の赤色警告表示</li>
       <li>途中作業を全部自動保存(中断地点から復帰)</li>
       <li>過去当直表の月別アーカイブ</li>
-      <li>振り分け条件詳細設定(連続勤務制限・NG・過去2ヶ月考慮 など)</li>
+      <li>振り分け条件詳細設定(外勤先の永続固定・ペア・先月考慮 など)</li>
       <li>回復時間のカスタマイズ</li>
     </ul>
     <button id="um-cta-primary" class="um-cta-primary" onclick="startUpgradeCheckout()">
