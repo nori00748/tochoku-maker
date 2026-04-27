@@ -39,16 +39,21 @@ export default async function handler(req, res) {
   // ---- GET: 取得 ----
   if (req.method === 'GET') {
     try {
-      const rows = await sql`
-        SELECT state_json, updated_at
-        FROM user_state
-        WHERE clerk_user_id = ${userId}
-        LIMIT 1
-      `;
-      if (!rows.length) return res.status(200).json({ state: null });
+      // state と plan を並行取得
+      const [stateRows, planRows] = await Promise.all([
+        sql`SELECT state_json, updated_at FROM user_state WHERE clerk_user_id = ${userId} LIMIT 1`,
+        sql`SELECT plan, current_period_end FROM user_plan WHERE clerk_user_id = ${userId} LIMIT 1`
+      ]);
+      const plan = planRows.length ? planRows[0].plan : 'free';
+      const periodEnd = planRows.length ? planRows[0].current_period_end : null;
+      // サブスクの期限が切れていたら free にフォールバック
+      const isExpired = periodEnd && new Date(periodEnd) < new Date();
+      const effectivePlan = isExpired ? 'free' : plan;
       return res.status(200).json({
-        state: rows[0].state_json,
-        updatedAt: rows[0].updated_at
+        state: stateRows.length ? stateRows[0].state_json : null,
+        updatedAt: stateRows.length ? stateRows[0].updated_at : null,
+        plan: effectivePlan,
+        currentPeriodEnd: periodEnd
       });
     } catch (e) {
       return res.status(500).json({ error: 'db_error', detail: String(e?.message || e) });
