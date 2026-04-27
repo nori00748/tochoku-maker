@@ -3601,17 +3601,19 @@ let _isApplyingState = false; // 状態復元中の二重保存防止
 
 // 名前データ + 状態データを1つのJSONに固める
 function _buildStateBlob() {
-  const rosterSave = storedRoster
-    ? storedRoster.map(({d,w,isWeekend,duty,nichoku,waiting,clinics,clinicsNichoku}) =>
-        ({d,w,isWeekend,duty,nichoku,waiting,clinics,clinicsNichoku}))
-    : null;
+  // 【無料プラン】保存対象は「マスタ情報」のみ:
+  //   - 担当者・グループ
+  //   - 外勤先(列)関連: COLS / colBand / bikoData / recoveryData / workPatterns / dayModes / nameOutsides
+  //   - 日付範囲(currentDates)は次回も同じ期間を編集できるよう便宜上含める
+  // 永続化しない:
+  //   - gridData(勤務者チェック○/✕)、slotData(編集中の○/✕)、dutyOpen、preAssigned、splitDays、
+  //     dutyOpenNichoku、slotDataNichoku、storedRoster(生成済み当直表)
+  //   → reopen 時は自動生成された roster ではなく編集ビューから始まる
+  // ※ ライトプラン実装時に途中作業の自動保存(上記の永続化)を追加予定
   return {
-    // names系
     groups, names, nameGroups, nameOutsides,
-    // state系 (gridDataはセッション限り、永続化対象外)
-    currentDates, slotData, dutyOpen, bikoData, gakkaiData,
-    holidayDates, colBand, roster: rosterSave, cols: COLS, preAssigned, splitDays,
-    dutyOpenNichoku, slotDataNichoku, recoveryData, workPatterns, dayModes
+    cols: COLS, colBand, bikoData, recoveryData, workPatterns, dayModes,
+    currentDates
   };
 }
 
