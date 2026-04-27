@@ -3654,6 +3654,16 @@ function _applyStateBlob(s) {
     if (s.roster) {
       storedRoster = s.roster.map(row => ({...row, dt: new Date(row.d+'T00:00:00')}));
     }
+    // gridData(勤務者チェックの ○/✕)は永続化対象外。
+    // 初回表示で空欄にならないよう、currentDates × names の全組合せに ○ をデフォルト充填
+    if (currentDates.length && names.length) {
+      names.forEach(n => {
+        if (!gridData[n]) gridData[n] = {};
+        currentDates.forEach(d => {
+          if (!gridData[n][d]) gridData[n][d] = '○';
+        });
+      });
+    }
   } finally {
     _isApplyingState = false;
   }
