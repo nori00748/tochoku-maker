@@ -183,6 +183,127 @@
       margin-top: 14px; font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.5;
     }
 
+    /* ===== 振り分け条件詳細設定モーダル(ライト以上) ===== */
+    #rules-modal {
+      display: none; position: fixed; inset: 0; z-index: 9700;
+      background: rgba(15,23,42,.45);
+    }
+    #rules-modal.show { display: flex; }
+    #rules-modal .rm-card {
+      background: #fff;
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+    }
+    #rules-modal .rm-header {
+      flex: 0 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-bottom: 1px solid #e2e8f0;
+      background: #fff;
+    }
+    #rules-modal .rm-title {
+      font-size: 17px; font-weight: 700; color: #0f172a; letter-spacing: -.01em;
+      display: flex; align-items: center; gap: 10px;
+    }
+    #rules-modal .rm-title-badge {
+      font-size: 10px; padding: 3px 7px; border-radius: 999px;
+      background: linear-gradient(135deg,#3b82f6,#1e40af); color: #fff; font-weight: 700;
+    }
+    #rules-modal .rm-actions { display: flex; gap: 8px; align-items: center; }
+    #rules-modal .rm-close {
+      background: none; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 6px 12px; cursor: pointer; color: #475569; font-weight: 600;
+      font-size: 13px;
+    }
+    #rules-modal .rm-close:hover { background: #f8fafc; color: #0f172a; }
+    #rules-modal .rm-body {
+      flex: 1 1 auto; display: flex; min-height: 0;
+    }
+    #rules-modal .rm-nav {
+      flex: 0 0 220px; background: #f8fafc;
+      border-right: 1px solid #e2e8f0;
+      padding: 12px 8px; overflow-y: auto;
+    }
+    #rules-modal .rm-nav-item {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; padding: 10px 12px; margin-bottom: 2px;
+      background: transparent; border: none; border-radius: 8px;
+      font-size: 13px; color: #475569; font-weight: 600;
+      cursor: pointer; text-align: left;
+    }
+    #rules-modal .rm-nav-item:hover { background: #eef2ff; color: #1e40af; }
+    #rules-modal .rm-nav-item.active {
+      background: #2563eb; color: #fff;
+    }
+    #rules-modal .rm-nav-item .rm-nav-ic {
+      font-size: 14px; width: 20px; text-align: center;
+    }
+    #rules-modal .rm-nav-section {
+      font-size: 10px; color: #94a3b8; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em;
+      padding: 12px 12px 6px;
+    }
+    #rules-modal .rm-pane {
+      flex: 1 1 auto; padding: 24px 28px; overflow-y: auto;
+      background: #fff;
+    }
+    #rules-modal .rm-pane h3 {
+      font-size: 16px; font-weight: 700; color: #0f172a;
+      margin: 0 0 6px; letter-spacing: -.01em;
+    }
+    #rules-modal .rm-pane .rm-desc {
+      font-size: 12px; color: #64748b; margin-bottom: 18px; line-height: 1.6;
+    }
+    #rules-modal .rm-section { margin-bottom: 28px; }
+    #rules-modal .rm-section h4 {
+      font-size: 13px; font-weight: 700; color: #1e293b;
+      margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0;
+    }
+    #rules-modal .rm-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; font-size: 13px; color: #334155;
+    }
+    #rules-modal .rm-row label { font-weight: 500; min-width: 140px; }
+    #rules-modal .rm-row input[type="number"] {
+      width: 80px; padding: 6px 8px; border: 1px solid #cbd5e1;
+      border-radius: 6px; font-size: 13px;
+    }
+    #rules-modal .rm-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+    #rules-modal .rm-row .rm-unit { color: #64748b; font-size: 12px; }
+    #rules-modal .rm-row .rm-help {
+      color: #94a3b8; font-size: 11px; margin-left: 6px;
+    }
+    #rules-modal .rm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    #rules-modal .rm-table th, #rules-modal .rm-table td {
+      border: 1px solid #e2e8f0; padding: 6px 8px; text-align: center;
+    }
+    #rules-modal .rm-table th {
+      background: #f1f5f9; color: #475569; font-weight: 700;
+    }
+    #rules-modal .rm-empty {
+      color: #94a3b8; font-size: 12px; padding: 12px;
+      background: #f8fafc; border-radius: 8px;
+      border: 1px dashed #cbd5e1; text-align: center;
+    }
+    #rules-modal .rm-add-btn {
+      background: #f8fafc; border: 1px dashed #cbd5e1;
+      padding: 8px 14px; border-radius: 8px; cursor: pointer;
+      color: #475569; font-size: 13px; font-weight: 600;
+    }
+    #rules-modal .rm-add-btn:hover { background: #eef2ff; color: #1e40af; border-color: #93c5fd; }
+
+    /* 振り分け条件詳細設定 トリガーボタン(操作画面の歯車) */
+    .gear-btn {
+      background: none; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 6px 10px; cursor: pointer; font-size: 14px;
+      color: #475569; transition: background .12s, color .12s, border-color .12s;
+    }
+    .gear-btn:hover { background: #eef2ff; color: #1e40af; border-color: #93c5fd; }
+    .gear-btn .gear-lock {
+      display: inline-block; margin-left: 4px; font-size: 10px;
+      padding: 1px 5px; border-radius: 999px;
+      background: #fef3c7; color: #92400e; font-weight: 700;
+    }
+
     /* ===== 会員登録誘導モーダル(ゲスト時のダウンロード遮断用) ===== */
     #signup-prompt-modal {
       display: none; position: fixed; inset: 0; z-index: 9500;
@@ -1148,6 +1269,7 @@
     <div id="preview-header">
       <h2>📋 出来上がり図</h2>
       <div id="preview-header-right">
+        <button class="btn btn-outline" id="archive-btn" onclick="openArchiveModal()" title="過去の当直表を呼び出し" style="display:none;">📅 過去の当直表</button>
         <button class="btn btn-outline" id="undo-btn" onclick="doUndo()" title="直前の操作を1つだけ戻す (Ctrl+Z)" disabled style="opacity:.4;cursor:not-allowed;">↶ 戻る</button>
         <button class="btn btn-primary" id="preview-btn" onclick="openExcelPreview()">📄 プレビュー</button>
       </div>
@@ -1170,7 +1292,12 @@
 
         <!-- グループ・担当者 -->
         <div id="groups-and-names" class="ctrl-block">
-          <h3>グループ・担当者</h3>
+          <h3 style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+            <span>グループ・担当者</span>
+            <button class="gear-btn" id="rules-gear-btn" onclick="openRulesModal()" title="振り分け条件詳細設定">
+              ⚙ 詳細設定<span id="rules-gear-lock" class="gear-lock" style="display:none;">⚡ライト</span>
+            </button>
+          </h3>
           <!-- 担当者追加 -->
           <div class="name-add-row">
             <input type="text" id="name-input" placeholder="名前を入力（Enterで追加）"
@@ -1223,6 +1350,7 @@
     <div id="action-bar">
 
       <button class="btn btn-success" onclick="generateRoster()">✅ 作る</button>
+      <button class="btn btn-outline" id="save-archive-btn" onclick="saveArchiveFromButton()" style="display:none;margin-left:8px;" title="現在の当直表を月別アーカイブに保存(ライト以上)">💾 月別保存</button>
     </div>
   </div>
 </div>
@@ -1264,6 +1392,20 @@ let splitDays = {};         // 分割済みセル: date -> { duty?: true, clinic
 let dutyOpenNichoku = {};   // 当直分割時、日直側の ○/✕: date -> '○' | '✕' (未設定は ○扱い)
 let slotDataNichoku = {};   // オンコール分割時、日直側の ○/✕: date -> { ci -> '○' | '✕' }
 let recoveryData = {};      // 回復時間(h): 列ラベル -> number。未設定は 勤務帯のデフォルトを使用
+// ===== 振り分け条件 詳細設定(ライト以上) =====
+// continuous : { enabled, maxDays }                     ... 連続勤務日数の上限
+// ngList     : [{ name, dates: [YYYY-MM-DD, ...] }]      ... 個別NG指定
+// pairList   : [{ a, b, mode: 'avoid'|'prefer' }]        ... ペア回避/推奨
+// history    : { enabled, mode: 'soft'|'hard', months: 1|2 } ... 先月/先々月の当直回数を考慮
+let assignmentRules = {
+  continuous: { enabled: false, maxDays: 2 },
+  ngList: [],
+  pairList: [],
+  history: { enabled: false, mode: 'soft', months: 1 }
+};
+let _currentRulesSection = 'recovery';
+// 過去当直回数 (Phase 3 のアーカイブ取得後に埋まる)。 name -> 平日+土日祝 の合算回数
+let _pastDutyCounts = {};
 let workPatterns = {};      // 勤務日ルール(外勤用): 列ラベル -> [{ nth: 1..5, w: 0..6 }, ...]
 let dayModes = {};          // 勤務日モード(当直/オンコール用): 列ラベル -> 'every'|'alternate'|'even'|'odd'
 
@@ -2907,10 +3049,18 @@ function computeRoster() {
 
   // 候補者リストをソート: P2=グループ内均等(回数), P3=グループ間均等(消化率)
   // その担当者の全カテゴリ合計回数 (平日当直+土日祝当直+オンコール全列+副直全列)
+  // ライト以上 + history.enabled なら過去N月分の当直回数も加点して、長期で公平に
+  const historyOn = isLightOrAbove() && assignmentRules.history && assignmentRules.history.enabled;
+  const historyHard = historyOn && assignmentRules.history.mode === 'hard';
   const getTotalAssignCount = (n) => {
     let total = (dutyCountsWD[n]||0) + (dutyCountsWE[n]||0);
     Object.values(onCallCounts[n]  || {}).forEach(v => total += (v||0));
     Object.values(subDutyCounts[n] || {}).forEach(v => total += (v||0));
+    if (historyOn) {
+      const past = (_pastDutyCounts && _pastDutyCounts[n]) ? _pastDutyCounts[n] : 0;
+      // hard は重みを大きく、soft は等倍で加点
+      total += historyHard ? past * 10 : past;
+    }
     return total;
   };
 
@@ -2952,6 +3102,52 @@ function computeRoster() {
   const availableFrom = {};
   names.forEach(n => { availableFrom[n] = -Infinity; });
 
+  // ── 振り分け条件詳細設定 (ライト以上) ──
+  const rulesEnabled = isLightOrAbove();
+  // 担当者ごとの過去N日間の被割当日付セット (連続勤務制限用)
+  const assignedDays = {};
+  names.forEach(n => { assignedDays[n] = new Set(); });
+  // NG: name -> Set(dates)
+  const ngMap = {};
+  if (rulesEnabled && Array.isArray(assignmentRules.ngList)) {
+    assignmentRules.ngList.forEach(it => {
+      if (!it || !it.name) return;
+      if (!ngMap[it.name]) ngMap[it.name] = new Set();
+      (it.dates||[]).forEach(d => ngMap[it.name].add(d));
+    });
+  }
+  // ペア: name -> [{ partner, mode }]
+  const pairMap = {};
+  if (rulesEnabled && Array.isArray(assignmentRules.pairList)) {
+    assignmentRules.pairList.forEach(p => {
+      if (!p || !p.a || !p.b) return;
+      if (!pairMap[p.a]) pairMap[p.a] = [];
+      if (!pairMap[p.b]) pairMap[p.b] = [];
+      pairMap[p.a].push({ partner: p.b, mode: p.mode || 'avoid' });
+      pairMap[p.b].push({ partner: p.a, mode: p.mode || 'avoid' });
+    });
+  }
+  const isNG = (name, d) => rulesEnabled && ngMap[name] && ngMap[name].has(d);
+  // 連続勤務制限: 当該日含めてmaxDays連続を超えるか
+  const violatesContinuous = (name, d) => {
+    if (!rulesEnabled || !assignmentRules.continuous.enabled) return false;
+    const lim = assignmentRules.continuous.maxDays || 2;
+    // 今日まで含めて連続している日数を数える
+    let cnt = 1; // today
+    let cur = d;
+    for (let i = 0; i < lim; i++) {
+      const prev = new Date(cur+'T00:00:00'); prev.setDate(prev.getDate()-1);
+      const ps = prev.toISOString().slice(0,10);
+      if (assignedDays[name].has(ps)) { cnt++; cur = ps; } else break;
+    }
+    return cnt > lim;
+  };
+  // ペア回避: 既に同日に割当済みのパートナーが居ればNG
+  const violatesPair = (name, todaySet) => {
+    if (!rulesEnabled || !pairMap[name]) return false;
+    return pairMap[name].some(p => p.mode === 'avoid' && todaySet.has(p.partner));
+  };
+
   const dayStartMs = (d) => new Date(d+'T00:00:00').getTime();
 
   // 指定バンドの勤務時間帯を ms で返す (未定義なら null)
@@ -2980,6 +3176,10 @@ function computeRoster() {
     const avail = availAfter(endMs, recoveryH);
     if (avail > availableFrom[name]) availableFrom[name] = avail;
   };
+  // 連続勤務制限のため、その日の被割当を別途記録 (時刻情報なし版)
+  const registerAssignedDay = (name, d) => {
+    if (assignedDays[name]) assignedDays[name].add(d);
+  };
 
   return currentDates.map(d => {
     const dt = new Date(d+'T00:00:00'), w = dt.getDay();
@@ -2993,13 +3193,18 @@ function computeRoster() {
     const preDay = preAssigned[d] || {};
 
     // ── 段階的フォールバック付き候補選出 ──
-    // Tier1: 時間制約+上限を両方満たす (通常)
-    // Tier2: 時間制約を緩和 (ハシゴ/連続勤務を許容) ただし上限は守る
-    // Tier3: 上限も超過 (勤務者不足時の最終手段)。ただし上限=0 は「割当対象外」として厳格に守る
+    // Tier1: 時間制約+上限+詳細ルール(NG/連続/ペア) を両方満たす (通常)
+    // Tier2: 時間制約と「連続/ペア」を緩和 (ただし上限とNGは守る)
+    // Tier3: 上限も超過 (勤務者不足時の最終手段)。NGは厳守。上限=0 は「割当対象外」として厳格に守る
     const pickWithFallback = (baseCandidates, withinMax, countsRef, maxFn, startMs) => {
-      let pool = baseCandidates.filter(n => withinMax(n) && (startMs == null || canAssignAt(n, startMs)));
-      if (!pool.length) pool = baseCandidates.filter(withinMax);
-      if (!pool.length) pool = baseCandidates.filter(n => !maxFn || maxFn(n) > 0);
+      // NG はどの段階でも除外 (ハード制約)
+      const notNG = (n) => !isNG(n, d);
+      // ペア(avoid) と 連続勤務 は Tier1 で考慮、Tier2 以降は緩和
+      const ruleTier1 = (n) =>
+        notNG(n) && !violatesContinuous(n, d) && !violatesPair(n, assignedToday);
+      let pool = baseCandidates.filter(n => ruleTier1(n) && withinMax(n) && (startMs == null || canAssignAt(n, startMs)));
+      if (!pool.length) pool = baseCandidates.filter(n => notNG(n) && withinMax(n));
+      if (!pool.length) pool = baseCandidates.filter(n => notNG(n) && (!maxFn || maxFn(n) > 0));
       if (!pool.length) return '';
       shuffle(pool);
       sortByFairness(pool, countsRef, maxFn);
@@ -3029,6 +3234,7 @@ function computeRoster() {
       if (!chosen) return '';
       dutyCounts[chosen] = (dutyCounts[chosen]||0) + 1;
       assignedToday.add(chosen);
+      registerAssignedDay(chosen, d);
       if (shift) registerAssign(chosen, shift.endMs, recovH);
       return chosen;
     };
@@ -3085,6 +3291,7 @@ function computeRoster() {
           }
           if (!chosen) return '';
           assignedToday.add(chosen);
+          registerAssignedDay(chosen, d);
           counts[chosen][idx] = (counts[chosen][idx]||0) + 1;
           if (useShift) registerAssign(chosen, useShift.endMs, useRecov);
           return chosen;
@@ -3109,6 +3316,7 @@ function computeRoster() {
         clinics[ci] = preChosen;
         clinicCounts[preChosen][col.label] = (clinicCounts[preChosen][col.label]||0)+1;
         assignedToday.add(preChosen);
+        registerAssignedDay(preChosen, d);
         if (shift) registerAssign(preChosen, shift.endMs, recovH);
         return;
       }
@@ -3130,6 +3338,7 @@ function computeRoster() {
       clinics[ci] = chosen;
       clinicCounts[chosen][col.label] = (clinicCounts[chosen][col.label]||0)+1;
       assignedToday.add(chosen);
+      registerAssignedDay(chosen, d);
       if (shift) registerAssign(chosen, shift.endMs, recovH);
     });
 
@@ -3263,7 +3472,13 @@ function renderRosterFromStored() {
       return '';
     };
     // 【無料プラン】セル間の医師移動は不可。ドロップ(名前タグからの割当)は許可。
-    const draggableAttrs = (name, type, ci='') => '';
+    // 【ライト以上】セル間ドラッグで医師の入れ替えが可能。
+    const draggableAttrs = (name, type, ci='') => {
+      if (!isLightOrAbove()) return '';
+      if (!name) return '';
+      const ciAttr = ci !== '' ? `,${ci}` : '';
+      return `draggable="true" ondragstart="onDragStartCell(event,'${escQ(d)}','${type}'${ciAttr})" ondragend="onDragEndCell(event)" style="cursor:grab;"`;
+    };
 
     const dutyCtx = `oncontextmenu="event.preventDefault();toggleSplitCell('${d}','duty')" title="右クリックで日直/当直に分割"`;
     if (isSplitAt(d, 'duty')) {
@@ -3272,11 +3487,13 @@ function renderRosterFromStored() {
       html += `<td class="duty-cell-split" ${dutyCtx}>
         <div class="duty-split">
           <div class="duty-sub drop-cell${nWarn}${cellCls(nichoku)}" data-d="${d}" data-type="nichoku"
+            ${draggableAttrs(nichoku,'nichoku')}
             ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">
             <span class="sub-label">日直</span>
             ${nichoku ? `<span class="sub-value">${esc(nichoku)}</span>` : ''}
           </div>
           <div class="duty-sub drop-cell${dWarn}${cellCls(duty)}" data-d="${d}" data-type="duty"
+            ${draggableAttrs(duty,'duty')}
             ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">
             <span class="sub-label">当直</span>
             ${duty ? `<span class="sub-value">${esc(duty)}</span>` : ''}
@@ -3309,11 +3526,13 @@ function renderRosterFromStored() {
         html += `<td class="duty-cell-split" ${clinicCtx}>
           <div class="duty-split">
             <div class="duty-sub drop-cell${nWarn}${cellCls(nichokuCli)}" data-d="${d}" data-type="clinic-nichoku" data-ci="${ci}"
+              ${draggableAttrs(nichokuCli,'clinic-nichoku',ci)}
               ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">
               <span class="sub-label">日直</span>
               ${nichokuCli ? `<span class="sub-value">${esc(nichokuCli)}</span>` : ''}
             </div>
             <div class="duty-sub drop-cell${dWarn}${cellCls(clinics[ci])}" data-d="${d}" data-type="clinic" data-ci="${ci}"
+              ${draggableAttrs(clinics[ci],'clinic',ci)}
               ondragover="onDragOverCell(event)" ondragleave="onDragLeaveCell(event)" ondrop="onDropCell(event)">
               <span class="sub-label">当直</span>
               ${clinics[ci] ? `<span class="sub-value">${esc(clinics[ci])}</span>` : ''}
@@ -3523,8 +3742,13 @@ function exportExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '当直表');
   const fileName = `当直表_${firstDt.getFullYear()}${String(firstDt.getMonth()+1).padStart(2,'0')}.xlsx`;
-  // 【無料プラン】30秒広告モーダルを挟んでからダウンロード
-  showAdModalThenDownload(() => XLSX.writeFile(wb, fileName));
+  // 【ライト以上】広告をスキップして即時ダウンロード
+  // 【無料】30秒広告モーダルを挟んでから
+  if (isLightOrAbove()) {
+    XLSX.writeFile(wb, fileName);
+  } else {
+    showAdModalThenDownload(() => XLSX.writeFile(wb, fileName));
+  }
 }
 
 // 【無料プラン】30秒広告モーダルを表示 → カウント完了後にコールバック実行
@@ -3690,26 +3914,37 @@ let _mode = null;             // 'cloud' | 'guest' | null(未確定)
 let _plan = 'free';           // 'free' | 'light' (将来 'pro' 追加)。クラウド時はAPIから取得、ゲスト時は常にfree
 const GUEST_MODE_KEY = 'tochoku_guest_mode';
 const GUEST_DATA_KEY = 'tochoku_guest_data';
-let _undoSnapshot = null;     // メモリ上の1ステップundoスナップショット (JSON文字列)
+let _undoStack = [];          // メモリ上のundoスタック (JSON文字列の配列)
+const UNDO_LIMIT_FREE  = 1;   // 無料: 1ステップのみ
+const UNDO_LIMIT_LIGHT = 50;  // ライト: 50ステップ
 let _saveTimer = null;        // 保存デバウンスタイマー
 let _isApplyingState = false; // 状態復元中の二重保存防止
 
 // 名前データ + 状態データを1つのJSONに固める
 function _buildStateBlob() {
-  // 【無料プラン】保存対象は「マスタ情報」のみ:
-  //   - 担当者・グループ
-  //   - 外勤先(列)関連: COLS / colBand / bikoData / recoveryData / workPatterns / dayModes / nameOutsides
-  //   - 日付範囲(currentDates)は次回も同じ期間を編集できるよう便宜上含める
-  // 永続化しない:
-  //   - gridData(勤務者チェック○/✕)、slotData(編集中の○/✕)、dutyOpen、preAssigned、splitDays、
-  //     dutyOpenNichoku、slotDataNichoku、storedRoster(生成済み当直表)
-  //   → reopen 時は自動生成された roster ではなく編集ビューから始まる
-  // ※ ライトプラン実装時に途中作業の自動保存(上記の永続化)を追加予定
-  return {
+  // 共通: マスタ + 日付範囲 + 振り分け条件
+  const blob = {
     groups, names, nameGroups, nameOutsides,
     cols: COLS, colBand, bikoData, recoveryData, workPatterns, dayModes,
-    currentDates
+    currentDates, assignmentRules
   };
+  // 【ライト以上】途中作業の全データを保存して、別端末/翌日でも完全復帰
+  if (isLightOrAbove()) {
+    blob.gridData         = gridData;
+    blob.slotData         = slotData;
+    blob.dutyOpen         = dutyOpen;
+    blob.preAssigned      = preAssigned;
+    blob.splitDays        = splitDays;
+    blob.dutyOpenNichoku  = dutyOpenNichoku;
+    blob.slotDataNichoku  = slotDataNichoku;
+    blob.gakkaiData       = gakkaiData;
+    blob.holidayDates     = holidayDates;
+    if (storedRoster) {
+      // dt は Date オブジェクトなので保存時はシリアライズ可能な形に
+      blob.roster = storedRoster.map(({ dt, ...rest }) => rest);
+    }
+  }
+  return blob;
 }
 
 // 復元: APIから取得したJSONをグローバル変数に展開
@@ -3748,6 +3983,13 @@ function _applyStateBlob(s) {
     if (s.recoveryData)    Object.assign(recoveryData, s.recoveryData);
     if (s.workPatterns)    Object.assign(workPatterns, s.workPatterns);
     if (s.dayModes)        Object.assign(dayModes, s.dayModes);
+    if (s.assignmentRules && typeof s.assignmentRules === 'object') {
+      // 既存値を残しつつ、保存された値で上書き
+      if (s.assignmentRules.continuous) Object.assign(assignmentRules.continuous, s.assignmentRules.continuous);
+      if (Array.isArray(s.assignmentRules.ngList)) assignmentRules.ngList = s.assignmentRules.ngList;
+      if (Array.isArray(s.assignmentRules.pairList)) assignmentRules.pairList = s.assignmentRules.pairList;
+      if (s.assignmentRules.history) Object.assign(assignmentRules.history, s.assignmentRules.history);
+    }
     if (s.roster) {
       storedRoster = s.roster.map(row => ({...row, dt: new Date(row.d+'T00:00:00')}));
     }
@@ -3827,20 +4069,28 @@ function saveNames() {
   _persist();
 }
 
+function _undoLimit() {
+  return isLightOrAbove() ? UNDO_LIMIT_LIGHT : UNDO_LIMIT_FREE;
+}
+
 function saveState() {
   if (_isApplyingState) return;
-  // 1ステップundo: 現在の状態をスナップショットに退避
-  try { _undoSnapshot = JSON.stringify(_buildStateBlob()); } catch(e) {}
+  // undoスタックに現在の状態をプッシュ
+  try {
+    _undoStack.push(JSON.stringify(_buildStateBlob()));
+    const lim = _undoLimit();
+    while (_undoStack.length > lim) _undoStack.shift();
+  } catch(e) {}
   updateUndoButton();
   _persist();
 }
 
-// 1ステップundo
+// undo: スタックから1ステップ戻す
 function doUndo() {
-  if (!_undoSnapshot) return;
+  if (!_undoStack.length) return;
   try {
-    const snap = JSON.parse(_undoSnapshot);
-    _undoSnapshot = null;
+    const snapStr = _undoStack.pop();
+    const snap = JSON.parse(snapStr);
     _applyStateBlob(snap);
     _apiSaveStateDebounced(); // 戻した状態を保存
     location.reload();        // 描画をクリーンに反映
@@ -3850,10 +4100,20 @@ function doUndo() {
 function updateUndoButton() {
   const btn = document.getElementById('undo-btn');
   if (!btn) return;
-  const can = !!_undoSnapshot;
+  const can = _undoStack.length > 0;
   btn.disabled = !can;
   btn.style.opacity = can ? '1' : '.4';
   btn.style.cursor  = can ? 'pointer' : 'not-allowed';
+  // ライト以上はステップ数を表示
+  if (isLightOrAbove() && can) {
+    btn.textContent = `↶ 戻る (${_undoStack.length})`;
+    btn.title = `直前の操作を戻す (Ctrl+Z)・残り${_undoStack.length}ステップ`;
+  } else {
+    btn.textContent = '↶ 戻る';
+    btn.title = isLightOrAbove()
+      ? '直前の操作を戻す (Ctrl+Z)'
+      : '直前の操作を1つだけ戻す (Ctrl+Z)・無制限はライト以上';
+  }
 }
 
 // 起動時に呼ばれる: APIから状態を取得して展開、UIを再描画
@@ -4754,6 +5014,16 @@ function applyPlanToUI() {
     if (label) label.textContent = '無料';
     if (planBtn) planBtn.textContent = '⚡ ライトプランへ';
   }
+  // 詳細設定の鍵バッジ表示切替(プラン未満なら表示)
+  const lock = document.getElementById('rules-gear-lock');
+  if (lock) lock.style.display = isLightOrAbove() ? 'none' : 'inline-block';
+  // undoボタンの表記更新(プラン依存)
+  if (typeof updateUndoButton === 'function') updateUndoButton();
+  // ライト以上のみ表示するボタン
+  const archBtn = document.getElementById('archive-btn');
+  if (archBtn) archBtn.style.display = isLightOrAbove() ? 'inline-flex' : 'none';
+  const saveArchBtn = document.getElementById('save-archive-btn');
+  if (saveArchBtn) saveArchBtn.style.display = isLightOrAbove() ? 'inline-flex' : 'none';
 }
 
 // プランバッジ・ユーザーメニューの「プラン管理」クリック時
@@ -4838,6 +5108,355 @@ async function openBillingPortal() {
 // プラン判定ヘルパー(他の機能ガードで使う)
 function isLightOrAbove() { return _plan === 'light' || _plan === 'pro'; }
 function isProPlan()      { return _plan === 'pro'; }
+
+// =============================================================
+// 振り分け条件 詳細設定モーダル(ライト以上)
+// =============================================================
+function openRulesModal() {
+  if (!isLightOrAbove()) {
+    // 無料/ゲストはアップグレードCTAへ誘導
+    showUpgradeModal();
+    return;
+  }
+  const m = document.getElementById('rules-modal');
+  if (!m) return;
+  m.classList.add('show');
+  switchRulesSection(_currentRulesSection || 'recovery');
+}
+function closeRulesModal() {
+  const m = document.getElementById('rules-modal');
+  if (m) m.classList.remove('show');
+}
+function switchRulesSection(name) {
+  _currentRulesSection = name;
+  document.querySelectorAll('#rm-nav .rm-nav-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === name);
+  });
+  const pane = document.getElementById('rm-pane');
+  if (!pane) return;
+  if      (name === 'recovery')   pane.innerHTML = renderRulesRecovery();
+  else if (name === 'continuous') pane.innerHTML = renderRulesContinuous();
+  else if (name === 'ng')         pane.innerHTML = renderRulesNG();
+  else if (name === 'pair')       pane.innerHTML = renderRulesPair();
+  else if (name === 'history')    pane.innerHTML = renderRulesHistory();
+}
+
+// ----- 各セクションの描画 -----
+function renderRulesRecovery() {
+  // 列ごとの回復時間。未設定の列は勤務帯デフォルト。
+  const rows = COLS.map((col, i) => {
+    const def = (workPatterns && workPatterns[col.label]) || null;
+    const pat = def ? (dayModes && dayModes[col.label]) || '当直' : '当直';
+    const wp  = BAND_DEFAULTS[pat] || BAND_DEFAULTS['当直'];
+    const defRecovery = wp.recovery;
+    const cur = (recoveryData[col.label] != null && !isNaN(recoveryData[col.label]))
+      ? recoveryData[col.label] : defRecovery;
+    return `<tr>
+      <td style="text-align:left;">${esc(col.label)}</td>
+      <td>${esc(pat)}</td>
+      <td><input type="number" min="0" max="48" value="${cur}"
+        onchange="updateRecovery('${escQ(col.label)}', this.value)"
+        style="width:70px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;"> 時間</td>
+      <td><button class="rm-add-btn" onclick="resetRecovery('${escQ(col.label)}')" style="padding:4px 10px;font-size:12px;">既定値に戻す (${defRecovery}h)</button></td>
+    </tr>`;
+  }).join('');
+  return `
+    <h3>回復時間</h3>
+    <div class="rm-desc">勤務終了後、次の勤務までに必要な休息時間(時間単位)。回復時間が経過していない人は次の勤務に振り分けられません。<br>
+    勤務帯ごとのデフォルト値: 外来1h / 日直8h / 当直8h / 日当直24h</div>
+    <table class="rm-table">
+      <thead><tr>
+        <th style="text-align:left;">列ラベル</th>
+        <th>勤務帯</th>
+        <th>回復時間</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="4" class="rm-empty">列がまだありません</td></tr>'}</tbody>
+    </table>
+  `;
+}
+function updateRecovery(label, val) {
+  const v = parseInt(val);
+  if (isNaN(v) || v < 0) return;
+  recoveryData[label] = v;
+  saveState();
+}
+function resetRecovery(label) {
+  delete recoveryData[label];
+  saveState();
+  switchRulesSection('recovery');
+}
+
+function renderRulesContinuous() {
+  const r = assignmentRules.continuous;
+  return `
+    <h3>連続勤務制限</h3>
+    <div class="rm-desc">同じ人が連続で勤務(当直/オンコール/副直)に振り分けられる最大日数。回復時間とは別に、N日連続を超えないように振り分けます。</div>
+    <div class="rm-section">
+      <div class="rm-row">
+        <label><input type="checkbox" ${r.enabled?'checked':''} onchange="updateContinuous('enabled', this.checked)"> 連続勤務制限を有効にする</label>
+      </div>
+      <div class="rm-row">
+        <label>最大連続日数</label>
+        <input type="number" min="1" max="14" value="${r.maxDays}" onchange="updateContinuous('maxDays', this.value)" ${r.enabled?'':'disabled'}>
+        <span class="rm-unit">日まで連続OK</span>
+        <span class="rm-help">例: 2 → 2日連続まで許可、3日連続は不可</span>
+      </div>
+    </div>
+  `;
+}
+function updateContinuous(key, val) {
+  if (key === 'enabled') assignmentRules.continuous.enabled = !!val;
+  else if (key === 'maxDays') {
+    const v = parseInt(val); if (!isNaN(v) && v > 0) assignmentRules.continuous.maxDays = v;
+  }
+  saveState();
+  if (_currentRulesSection === 'continuous') switchRulesSection('continuous');
+}
+
+function renderRulesNG() {
+  const list = assignmentRules.ngList;
+  const items = list.map((it, idx) => {
+    const dateChips = (it.dates||[]).map((d,di) => `<span style="display:inline-block;background:#eef2ff;color:#1e40af;padding:2px 8px;border-radius:999px;font-size:11px;margin:2px;">${esc(d)}<button onclick="removeNGDate(${idx},${di})" style="background:none;border:none;color:#1e40af;cursor:pointer;margin-left:4px;font-weight:700;">×</button></span>`).join('');
+    return `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <select onchange="updateNGName(${idx}, this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+          <option value="">— 担当者を選択 —</option>
+          ${names.map(n => `<option value="${escQ(n)}" ${n===it.name?'selected':''}>${esc(n)}</option>`).join('')}
+        </select>
+        <input type="date" onchange="addNGDate(${idx}, this.value); this.value='';" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+        <button onclick="removeNG(${idx})" class="rm-add-btn" style="margin-left:auto;color:#b91c1c;border-color:#fecaca;">削除</button>
+      </div>
+      <div>${dateChips || '<span class="rm-help">日付ピッカーから追加してください</span>'}</div>
+    </div>`;
+  }).join('');
+  return `
+    <h3>NG設定</h3>
+    <div class="rm-desc">特定の担当者を特定の日付に振り分けない設定。学会・休暇・私用などで対応できます。</div>
+    ${items || '<div class="rm-empty">まだ設定されていません</div>'}
+    <div style="margin-top:12px;"><button class="rm-add-btn" onclick="addNG()">＋ NG行を追加</button></div>
+  `;
+}
+function addNG() { assignmentRules.ngList.push({ name: '', dates: [] }); saveState(); switchRulesSection('ng'); }
+function removeNG(idx) { assignmentRules.ngList.splice(idx,1); saveState(); switchRulesSection('ng'); }
+function updateNGName(idx, val) { if (assignmentRules.ngList[idx]) { assignmentRules.ngList[idx].name = val; saveState(); } }
+function addNGDate(idx, d) {
+  if (!d || !assignmentRules.ngList[idx]) return;
+  if (!assignmentRules.ngList[idx].dates) assignmentRules.ngList[idx].dates = [];
+  if (!assignmentRules.ngList[idx].dates.includes(d)) {
+    assignmentRules.ngList[idx].dates.push(d);
+    assignmentRules.ngList[idx].dates.sort();
+    saveState(); switchRulesSection('ng');
+  }
+}
+function removeNGDate(idx, di) {
+  if (assignmentRules.ngList[idx] && assignmentRules.ngList[idx].dates) {
+    assignmentRules.ngList[idx].dates.splice(di,1);
+    saveState(); switchRulesSection('ng');
+  }
+}
+
+function renderRulesPair() {
+  const list = assignmentRules.pairList;
+  const opt = (sel) => names.map(n => `<option value="${escQ(n)}" ${n===sel?'selected':''}>${esc(n)}</option>`).join('');
+  const items = list.map((it, idx) => `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <select onchange="updatePair(${idx},'a',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+      <option value="">— A —</option>${opt(it.a)}
+    </select>
+    <select onchange="updatePair(${idx},'mode',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+      <option value="avoid"  ${it.mode==='avoid'?'selected':''}>と同じ日に組ませない</option>
+      <option value="prefer" ${it.mode==='prefer'?'selected':''}>と同じ日に優先して組ませる</option>
+    </select>
+    <select onchange="updatePair(${idx},'b',this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+      <option value="">— B —</option>${opt(it.b)}
+    </select>
+    <button onclick="removePair(${idx})" class="rm-add-btn" style="margin-left:auto;color:#b91c1c;border-color:#fecaca;">削除</button>
+  </div>`).join('');
+  return `
+    <h3>ペア条件</h3>
+    <div class="rm-desc">同日に同じ勤務(当直/日直/オンコール/副直)で組み合わさる二人を「避ける/優先する」を指定できます。</div>
+    ${items || '<div class="rm-empty">まだ設定されていません</div>'}
+    <div style="margin-top:12px;"><button class="rm-add-btn" onclick="addPair()">＋ ペア条件を追加</button></div>
+  `;
+}
+function addPair() { assignmentRules.pairList.push({ a: '', b: '', mode: 'avoid' }); saveState(); switchRulesSection('pair'); }
+function removePair(idx) { assignmentRules.pairList.splice(idx,1); saveState(); switchRulesSection('pair'); }
+function updatePair(idx, key, val) { if (assignmentRules.pairList[idx]) { assignmentRules.pairList[idx][key] = val; saveState(); } }
+
+function renderRulesHistory() {
+  const h = assignmentRules.history;
+  return `
+    <h3>先月・先々月考慮</h3>
+    <div class="rm-desc">過去の当直回数を加味して振り分け。回数が多い人を後回しにし、長期で公平な分配を目指します。</div>
+    <div class="rm-section">
+      <div class="rm-row">
+        <label><input type="checkbox" ${h.enabled?'checked':''} onchange="updateHistory('enabled', this.checked)"> 先月・先々月の当直回数を考慮する</label>
+      </div>
+      <div class="rm-row">
+        <label>遡る期間</label>
+        <select onchange="updateHistory('months', this.value)" ${h.enabled?'':'disabled'} style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+          <option value="1" ${h.months===1?'selected':''}>先月のみ</option>
+          <option value="2" ${h.months===2?'selected':''}>先月+先々月</option>
+        </select>
+      </div>
+      <div class="rm-row">
+        <label>強さ</label>
+        <select onchange="updateHistory('mode', this.value)" ${h.enabled?'':'disabled'} style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+          <option value="soft" ${h.mode==='soft'?'selected':''}>推奨(回数を加点して後回し)</option>
+          <option value="hard" ${h.mode==='hard'?'selected':''}>強制(過去回数が多い人を最後に)</option>
+        </select>
+      </div>
+      <div class="rm-help" style="padding:8px 0;color:#94a3b8;font-size:11px;">
+        ※ 過去の当直回数は、ライトプランでアーカイブされた過去当直表から自動集計します。
+      </div>
+    </div>
+  `;
+}
+function updateHistory(key, val) {
+  if (key === 'enabled') assignmentRules.history.enabled = !!val;
+  else if (key === 'months') assignmentRules.history.months = parseInt(val) || 1;
+  else if (key === 'mode')   assignmentRules.history.mode = (val === 'hard' ? 'hard' : 'soft');
+  saveState();
+  if (_currentRulesSection === 'history') switchRulesSection('history');
+  // 設定変更で再ロード
+  loadPastDutyCounts();
+}
+
+// =============================================================
+// 過去当直表アーカイブ (ライト以上)
+// =============================================================
+function _currentRosterYM() {
+  // 現在編集中の roster の月。先頭日付を採用。複数月にまたがる場合も先頭月。
+  if (!storedRoster || !storedRoster.length) return null;
+  const dt = storedRoster[0].dt || new Date(storedRoster[0].d+'T00:00:00');
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+}
+
+async function saveCurrentRosterToArchive() {
+  if (!isLightOrAbove() || !window.Clerk || !Clerk.session) return;
+  if (!storedRoster || !storedRoster.length) return;
+  const ym = _currentRosterYM();
+  if (!ym) return;
+  try {
+    const token = await Clerk.session.getToken();
+    const rosterPlain = storedRoster.map(({ dt, ...rest }) => rest);
+    await fetch('/api/archive', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ ym, roster: rosterPlain })
+    });
+  } catch (e) {
+    console.error('archive save error', e);
+  }
+}
+
+async function openArchiveModal() {
+  if (!isLightOrAbove()) { showUpgradeModal(); return; }
+  const m = document.getElementById('archive-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+  await refreshArchiveList();
+}
+function closeArchiveModal() {
+  const m = document.getElementById('archive-modal');
+  if (m) m.style.display = 'none';
+}
+async function refreshArchiveList() {
+  const el = document.getElementById('archive-list');
+  if (!el) return;
+  el.innerHTML = '読み込み中…';
+  if (!window.Clerk || !Clerk.session) { el.innerHTML = '<div style="color:#94a3b8;">ログインしてください</div>'; return; }
+  try {
+    const token = await Clerk.session.getToken();
+    const res = await fetch('/api/archive', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const list = data.list || [];
+    if (!list.length) {
+      el.innerHTML = '<div style="color:#94a3b8;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:18px;text-align:center;">まだアーカイブがありません<br><span style="font-size:11px;">当直表を生成して「💾 月別保存」を押すと、こちらに月別で蓄積されます</span></div>';
+      return;
+    }
+    el.innerHTML = list.map(it => {
+      const ym = it.ym;
+      const upd = it.updatedAt ? new Date(it.updatedAt).toLocaleString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;">
+        <div style="flex:1;">
+          <div style="font-weight:700;color:#0f172a;">${esc(ym)}</div>
+          <div style="font-size:11px;color:#94a3b8;">最終保存: ${esc(upd)}</div>
+        </div>
+        <button class="btn btn-outline" onclick="loadArchive('${escQ(ym)}')" style="padding:5px 12px;font-size:12px;">読み込み</button>
+        <button onclick="deleteArchive('${escQ(ym)}')" style="background:none;border:1px solid #fecaca;color:#b91c1c;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;">削除</button>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    console.error(e);
+    el.innerHTML = '<div style="color:#b91c1c;">アーカイブ取得に失敗しました</div>';
+  }
+}
+async function loadArchive(ym) {
+  if (!confirm(`${ym} の当直表を読み込みますか? 現在の編集内容は破棄されます。`)) return;
+  try {
+    const token = await Clerk.session.getToken();
+    const res = await fetch(`/api/archive?ym=${encodeURIComponent(ym)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.roster || !Array.isArray(data.roster)) throw new Error('no roster');
+    storedRoster = data.roster.map(r => ({ ...r, dt: new Date(r.d+'T00:00:00') }));
+    closeArchiveModal();
+    renderRosterFromStored();
+    const pb = document.getElementById('preview-btn');
+    if (pb) pb.style.display = 'inline-flex';
+    switchTab('roster');
+    saveState();
+  } catch (e) {
+    console.error(e); alert('読み込みに失敗しました');
+  }
+}
+async function deleteArchive(ym) {
+  if (!confirm(`${ym} のアーカイブを削除しますか?`)) return;
+  try {
+    const token = await Clerk.session.getToken();
+    await fetch(`/api/archive?ym=${encodeURIComponent(ym)}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+    refreshArchiveList();
+  } catch (e) { console.error(e); }
+}
+
+async function saveArchiveFromButton() {
+  if (!isLightOrAbove()) { showUpgradeModal(); return; }
+  if (!storedRoster || !storedRoster.length) { alert('保存する当直表がありません。先に「作る」を押してください。'); return; }
+  const ym = _currentRosterYM();
+  if (!ym) { alert('月を判定できませんでした'); return; }
+  const btn = document.getElementById('save-archive-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+  try {
+    await saveCurrentRosterToArchive();
+    if (btn) { btn.textContent = '✅ 保存しました'; setTimeout(()=>{ btn.disabled=false; btn.textContent='💾 月別保存'; }, 1500); }
+    // 過去回数も更新
+    loadPastDutyCounts();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 月別保存'; }
+    alert('保存に失敗しました');
+  }
+}
+
+// 起動時 + 設定変更時に過去回数を取得
+async function loadPastDutyCounts() {
+  if (!isLightOrAbove() || !window.Clerk || !Clerk.session) { _pastDutyCounts = {}; return; }
+  if (!assignmentRules.history.enabled) { _pastDutyCounts = {}; return; }
+  try {
+    const token = await Clerk.session.getToken();
+    const months = assignmentRules.history.months || 1;
+    const base = _currentRosterYM() || '';
+    const url = `/api/past-duty-counts?months=${months}` + (base ? `&base=${encodeURIComponent(base)}` : '');
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    _pastDutyCounts = data.counts || {};
+  } catch (e) {
+    console.error('past-duty-counts error', e);
+    _pastDutyCounts = {};
+  }
+}
 
 // 戻りURL(?checkout=success など)の処理
 function handleCheckoutReturn() {
@@ -5015,6 +5634,8 @@ function _initAppGuest() {
 async function _initAppForUser() {
   // クラウドから状態を取得
   const loaded = await loadStateFromCloud();
+  // ライト以上は過去当直回数も取得 (history機能用)
+  loadPastDutyCounts();
   if (!loaded) {
     // 新規ユーザー: デフォルトの日付範囲を入れておく
     const t = new Date(), y = t.getFullYear(), m = String(t.getMonth()+1).padStart(2,'0');
@@ -5178,6 +5799,60 @@ async function _waitForClerk() {
     <button class="ncp-close" onclick="closeNameClinicsPopup()" title="閉じる">×</button>
   </div>
   <div id="ncp-list" class="ncp-list"></div>
+</div>
+
+<!-- 過去当直表アーカイブモーダル(ライト以上) -->
+<div id="archive-modal" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;z-index:9650;background:rgba(15,23,42,.5);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:14px;width:520px;max-width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 48px rgba(0,0,0,.25);">
+    <div style="padding:14px 18px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="margin:0;font-size:16px;font-weight:700;color:#0f172a;">📅 過去の当直表</h3>
+      <button onclick="closeArchiveModal()" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:4px 10px;cursor:pointer;color:#475569;font-weight:600;font-size:12px;">閉じる</button>
+    </div>
+    <div style="padding:16px 18px;overflow-y:auto;flex:1;">
+      <div id="archive-list" style="font-size:13px;color:#475569;">読み込み中…</div>
+    </div>
+    <div style="padding:12px 18px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;">
+      ※ 「保存」を押した月から積み上がります。同じ月で複数回保存すると上書きされます。
+    </div>
+  </div>
+</div>
+
+<!-- 振り分け条件詳細設定モーダル(ライト以上) -->
+<div id="rules-modal" role="dialog" aria-modal="true">
+  <div class="rm-card">
+    <div class="rm-header">
+      <div class="rm-title">
+        ⚙ 振り分け条件 詳細設定
+        <span class="rm-title-badge">ライト</span>
+      </div>
+      <div class="rm-actions">
+        <button class="rm-close" onclick="closeRulesModal()">閉じる</button>
+      </div>
+    </div>
+    <div class="rm-body">
+      <nav class="rm-nav" id="rm-nav">
+        <div class="rm-nav-section">基本</div>
+        <button class="rm-nav-item active" data-section="recovery" onclick="switchRulesSection('recovery')">
+          <span class="rm-nav-ic">⏱</span>回復時間
+        </button>
+        <button class="rm-nav-item" data-section="continuous" onclick="switchRulesSection('continuous')">
+          <span class="rm-nav-ic">🔁</span>連続勤務制限
+        </button>
+        <div class="rm-nav-section">個別調整</div>
+        <button class="rm-nav-item" data-section="ng" onclick="switchRulesSection('ng')">
+          <span class="rm-nav-ic">🚫</span>NG設定
+        </button>
+        <button class="rm-nav-item" data-section="pair" onclick="switchRulesSection('pair')">
+          <span class="rm-nav-ic">👥</span>ペア条件
+        </button>
+        <div class="rm-nav-section">履歴</div>
+        <button class="rm-nav-item" data-section="history" onclick="switchRulesSection('history')">
+          <span class="rm-nav-ic">📅</span>先月・先々月考慮
+        </button>
+      </nav>
+      <main class="rm-pane" id="rm-pane"></main>
+    </div>
+  </div>
 </div>
 
 <!-- ライトプラン アップグレード CTA モーダル -->
