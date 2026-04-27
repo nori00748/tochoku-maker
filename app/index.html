@@ -102,7 +102,7 @@
       background: linear-gradient(90deg,#fef9c3,#fef3c7);
       border-bottom: 1px solid #fde68a;
       padding: 8px 16px; font-size: 12px; color: #78350f;
-      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      align-items: center; gap: 12px; flex-wrap: wrap;
     }
     #guest-banner.show { display: flex; }
     #guest-banner .gb-msg { flex: 1; min-width: 200px; }
@@ -4363,27 +4363,125 @@ function _tourPos(idx) {
 // 起動シーケンス: Clerk認証 → API取得 → アプリ初期化
 // =============================================================
 
-// 日本語ローカライズ (主要文字列のみ)
-const _clerkJaJP = {
+// 公式の @clerk/localizations から jaJP を動的インポート
+// 失敗時は最低限の日本語インライン辞書にフォールバック
+const _clerkJaJPFallback = {
   locale: 'ja-JP',
   socialButtonsBlockButton: '{{provider|titleize}}でつづける',
   dividerText: 'または',
   formButtonPrimary: '続ける',
+  formFieldLabel__emailAddress: 'メールアドレス',
+  formFieldLabel__password: 'パスワード',
+  formFieldInputPlaceholder__emailAddress: 'メールアドレス',
   signIn: {
-    start: { title: 'ログイン', subtitle: '当直表メーカーにアクセス' },
-    emailCode: { title: '確認コードを入力', subtitle: 'メールに送られたコードを入力してください' }
+    start: { title: 'ログイン', subtitle: '当直表メーカーにアクセス',
+             actionText: 'アカウントをお持ちでない方', actionLink: '会員登録' }
   },
   signUp: {
-    start: { title: '会員登録', subtitle: 'Googleアカウントで簡単登録' }
+    start: { title: '会員登録', subtitle: 'Googleアカウントで簡単登録',
+             actionText: 'すでにアカウントをお持ちの方', actionLink: 'ログイン' }
   },
   userButton: {
     action__manageAccount: 'アカウント管理',
     action__signOut: 'ログアウト'
   },
   userProfile: {
-    navbar: { title: 'アカウント', description: 'アカウント情報を管理' }
+    formButtonPrimary__save: '保存',
+    formButtonReset: 'キャンセル',
+    navbar: { title: 'アカウント', description: 'アカウント情報を管理',
+              account: 'プロフィール', security: 'セキュリティ' },
+    start: {
+      headerTitle__account: 'プロフィール詳細',
+      headerTitle__security: 'セキュリティ',
+      profileSection: { title: 'プロフィール', primaryButton: 'プロフィールを更新' },
+      usernameSection: { title: 'ユーザー名', primaryButton__updateUsername: 'ユーザー名を更新', primaryButton__setUsername: 'ユーザー名を設定' },
+      emailAddressesSection: {
+        title: 'メールアドレス', primaryButton: 'メールアドレスを追加',
+        detailsAction__primary: 'メイン',
+        detailsAction__nonPrimary: 'メインに設定',
+        detailsAction__unverified: '確認',
+        destructiveAction: 'メールアドレスを削除'
+      },
+      phoneNumbersSection: {
+        title: '電話番号', primaryButton: '電話番号を追加',
+        detailsAction__primary: 'メイン',
+        detailsAction__nonPrimary: 'メインに設定',
+        detailsAction__unverified: '確認',
+        destructiveAction: '電話番号を削除'
+      },
+      connectedAccountsSection: {
+        title: '連携アカウント', primaryButton: 'アカウントを連携',
+        actionLabel__connectionFailed: '再試行',
+        actionLabel__reauthorize: '再承認',
+        subtitle__reauthorize: 'スコープが更新されたため、再承認が必要です',
+        destructiveActionTitle: '削除'
+      },
+      passwordSection: { title: 'パスワード',
+        primaryButton__updatePassword: 'パスワードを更新',
+        primaryButton__setPassword: 'パスワードを設定' },
+      mfaSection: { title: '2段階認証',
+        primaryButton: '2段階認証を追加' },
+      activeDevicesSection: { title: 'アクティブなデバイス',
+        primaryButton: 'アクティブなデバイス',
+        detailsTitle__currentDevice: '現在のデバイス',
+        detailsAction__currentDevice: 'サインアウト' },
+      web3WalletsSection: { title: 'Web3ウォレット',
+        primaryButton: 'Web3ウォレットを連携',
+        destructiveAction: 'ウォレットを削除' },
+      dangerSection: { title: 'アカウントを削除',
+        deleteAccountButton: 'アカウントを削除',
+        deleteAccountTitle: 'アカウント削除',
+        deleteAccountDescription: 'アカウントとそれに関連するすべてのデータが完全に削除されます',
+        deleteAccountActionDescription: '続行するには「Delete account」と入力してください',
+        deleteAccountConfirm: 'アカウントを削除' }
+    },
+    profilePage: { title: 'プロフィールを更新',
+      successMessage: 'プロフィールを更新しました',
+      imageFormSubtitle: '画像をアップロード',
+      imageFormTitle: 'プロフィール画像',
+      imageFormDestructiveActionSubtitle: '削除',
+      imageFormDestructiveAction: '画像を削除',
+      readonly: 'プロフィール情報は外部連携先から取得されています' },
+    emailAddressPage: { title: 'メールアドレスを追加',
+      verifyTitle: 'メールアドレスを確認',
+      formHint: 'このメールアドレスでサインインできるようになります',
+      emailCode: { formHint: 'このメールアドレスに確認コードが送信されます',
+        formTitle: '確認コード',
+        formSubtitle: 'メールに送られた確認コードを入力',
+        resendButton: 'コードを再送信',
+        successMessage: 'メールアドレス {{identifier}} がアカウントに追加されました' } },
+    formButtonPrimary: '保存',
+    deletePage: { title: 'アカウント削除',
+      messageLine1: '本当にアカウントを削除しますか?',
+      messageLine2: 'この操作は取り消せません',
+      actionDescription: '続行するには「Delete account」と入力してください',
+      confirm: 'アカウントを削除' }
   }
 };
+
+let _clerkLoc = null;
+
+async function _loadClerkLoc() {
+  // 複数のESM CDNを順に試す
+  const urls = [
+    'https://esm.sh/@clerk/localizations@latest',
+    'https://cdn.jsdelivr.net/npm/@clerk/localizations@latest/+esm'
+  ];
+  for (const url of urls) {
+    try {
+      const mod = await import(url);
+      const ja = mod?.jaJP || mod?.default?.jaJP;
+      if (ja) {
+        console.log('Loaded Clerk JP localization from', url);
+        return ja;
+      }
+    } catch (e) {
+      console.warn('Clerk localization load failed at', url, e);
+    }
+  }
+  console.warn('Using fallback inline JP localization');
+  return _clerkJaJPFallback;
+}
 
 function openSignIn() {
   if (!window.Clerk) return;
@@ -4588,7 +4686,8 @@ async function _waitForClerk() {
 (async function bootstrap() {
   try {
     await _waitForClerk();
-    await Clerk.load({ localization: _clerkJaJP });
+    _clerkLoc = await _loadClerkLoc();
+    await Clerk.load({ localization: _clerkLoc });
   } catch (e) {
     console.error('Clerk init failed', e);
     const lt = document.getElementById('auth-loading-text');
