@@ -1270,6 +1270,7 @@
       <h2>📋 出来上がり図</h2>
       <div id="preview-header-right">
         <button class="btn btn-outline" id="archive-btn" onclick="openArchiveModal()" title="過去の当直表を呼び出し" style="display:none;">📅 過去の当直表</button>
+        <button class="btn btn-outline" id="save-archive-btn" onclick="saveArchiveFromButton()" title="現在の当直表を月別アーカイブに保存(ライト以上)" style="display:none;">💾 月別保存</button>
         <button class="btn btn-outline" id="undo-btn" onclick="doUndo()" title="直前の操作を1つだけ戻す (Ctrl+Z)" disabled style="opacity:.4;cursor:not-allowed;">↶ 戻る</button>
         <button class="btn btn-primary" id="preview-btn" onclick="openExcelPreview()">📄 プレビュー</button>
       </div>
@@ -1350,7 +1351,6 @@
     <div id="action-bar">
 
       <button class="btn btn-success" onclick="generateRoster()">✅ 作る</button>
-      <button class="btn btn-outline" id="save-archive-btn" onclick="saveArchiveFromButton()" style="display:none;margin-left:8px;" title="現在の当直表を月別アーカイブに保存(ライト以上)">💾 月別保存</button>
     </div>
   </div>
 </div>
@@ -3785,6 +3785,16 @@ function switchTab(tab) {
   const ev = document.getElementById('excel-view');
   if (rv) rv.style.display = tab==='roster'?'block':'none';
   if (ev) ev.style.display = tab==='excel' ?'block':'none';
+  // 全体表示モード(Excelプレビュー)から roster に戻る時は、操作画面・ヘッダー等を必ず復元する
+  // (隠された状態で別経路が switchTab('roster') を呼ぶと control-pane が消えたままになるバグの予防)
+  if (tab === 'roster') {
+    const ctrl = document.getElementById('control-pane');
+    const rsz  = document.getElementById('resizer');
+    const hdr  = document.getElementById('preview-header');
+    if (ctrl && ctrl.style.display === 'none') ctrl.style.display = '';
+    if (rsz  && rsz.style.display  === 'none') rsz.style.display  = '';
+    if (hdr  && hdr.style.display  === 'none') hdr.style.display  = '';
+  }
 }
 function toggleExcelView() {
   const isExcel = document.getElementById('excel-view').style.display !== 'none';
@@ -3867,7 +3877,7 @@ function renderExcelPreview() {
     <div id="excel-view-toolbar">
       <button class="btn btn-outline" onclick="closeExcelPreview()">← 編集に戻る</button>
       <button class="btn btn-success" onclick="exportExcel()">⬇ ダウンロード</button>
-      <span class="ep-hint">ダウンロードを押すと30秒の広告後にExcelファイルが保存されます。</span>
+      ${isLightOrAbove() ? '' : '<span class="ep-hint">ダウンロードを押すと30秒の広告後にExcelファイルが保存されます。</span>'}
     </div>
     <div style="overflow:auto;max-width:100%;">
       <table class="excel-preview">
