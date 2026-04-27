@@ -4720,12 +4720,9 @@ function _initAppGuest() {
         if (sd) sd.value = currentDates[0];
         if (ed) ed.value = currentDates[currentDates.length-1];
       }
-      if (storedRoster) {
-        renderRosterFromStored();
-        const pb = document.getElementById('preview-btn');
-        if (pb) pb.style.display = 'inline-flex';
-        switchTab('roster');
-      } else if (currentDates.length) {
+      // 無料プランは storedRoster を保存しないため reopen 時は編集ビューで開始
+      if (currentDates.length) {
+        applyWorkPatternsToDates(); // ルールから slotData/dutyOpen を再構築
         renderPreviewEditable();
       }
     }
@@ -4773,6 +4770,12 @@ async function _initAppForUser() {
     const ed = document.getElementById('end-date');
     if (sd) sd.value = `${y}-${m}-01`;
     if (ed) ed.value = last.toISOString().slice(0,10);
+  }
+  // 復元した日付範囲が存在するなら、勤務日ルールに従って slotData/dutyOpen を再構築
+  // (slotData等は永続化対象外のため、ここで毎回ゼロから組み立てる)
+  if (currentDates.length) {
+    applyWorkPatternsToDates();
+    renderPreviewEditable();
   }
   updateGroupSelect();
   renderGroupsAndNames();
