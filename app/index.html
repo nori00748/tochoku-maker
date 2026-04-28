@@ -3828,6 +3828,13 @@ function openExcelPreview() {
 }
 
 function closeExcelPreview() {
+  // アーカイブ閲覧モードから戻る場合は元の状態を復元
+  if (_archiveViewBackup) {
+    storedRoster = _archiveViewBackup.roster;
+    _archiveViewBackup = null;
+    if (storedRoster) renderRosterFromStored();
+    else if (currentDates.length) renderPreviewEditable();
+  }
   // 通常レイアウトに戻す
   const ctrl = document.getElementById('control-pane');
   const rsz  = document.getElementById('resizer');
@@ -3886,7 +3893,8 @@ function renderExcelPreview() {
     <div id="excel-view-toolbar">
       <button class="btn btn-outline" onclick="closeExcelPreview()">← 編集に戻る</button>
       <button class="btn btn-success" onclick="exportExcel()">⬇ ダウンロード</button>
-      ${isLightOrAbove() ? `<button class="btn btn-outline" id="save-archive-btn" onclick="saveArchiveFromButton()" title="この当直表を月別アーカイブに保存">💾 月別保存</button>` : ''}
+      ${(isLightOrAbove() && !_archiveViewBackup) ? `<button class="btn btn-outline" id="save-archive-btn" onclick="saveArchiveFromButton()" title="この当直表を月別アーカイブに保存">💾 月別保存</button>` : ''}
+      ${_archiveViewBackup ? '<span class="ep-hint" style="color:#0369a1;font-weight:600;">📅 過去当直表を閲覧中</span>' : ''}
       ${isLightOrAbove() ? '' : '<span class="ep-hint">ダウンロードを押すと30秒の広告後にExcelファイルが保存されます。</span>'}
     </div>
     <div style="overflow:auto;max-width:100%;">
@@ -5544,7 +5552,8 @@ async function refreshArchiveList() {
           <div style="font-weight:700;color:#0f172a;">${esc(ym)}</div>
           <div style="font-size:11px;color:#94a3b8;">最終保存: ${esc(upd)}</div>
         </div>
-        <button class="btn btn-outline" onclick="loadArchive('${escQ(ym)}')" style="padding:5px 12px;font-size:12px;">読み込み</button>
+        <button class="btn btn-outline" onclick="previewArchive('${escQ(ym)}')" style="padding:5px 12px;font-size:12px;">📄 プレビュー</button>
+        <button class="btn btn-success" onclick="downloadArchive('${escQ(ym)}')" style="padding:5px 12px;font-size:12px;">⬇ Excel</button>
         <button onclick="deleteArchive('${escQ(ym)}')" style="background:none;border:1px solid #fecaca;color:#b91c1c;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;">削除</button>
       </div>`;
     }).join('');
@@ -5553,23 +5562,55 @@ async function refreshArchiveList() {
     el.innerHTML = '<div style="color:#b91c1c;">アーカイブ取得に失敗しました</div>';
   }
 }
-async function loadArchive(ym) {
-  if (!confirm(`${ym} の当直表を読み込みますか? 現在の編集内容は破棄されます。`)) return;
+// アーカイブ閲覧モード: 現在の storedRoster をバックアップして過去版を表示
+let _archiveViewBackup = null;
+
+async function _fetchArchiveRoster(ym) {
+  if (!window.Clerk || !Clerk.session) throw new Error('not_signed_in');
+  const token = await Clerk.session.getToken();
+  const res = await fetch(`/api/archive?ym=${encodeURIComponent(ym)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+  if (!res.ok) {
+    let detail = '';
+    try { const j = await res.json(); detail = j.detail || j.error || ''; } catch {}
+    throw new Error(`HTTP ${res.status}${detail ? ': '+detail : ''}`);
+  }
+  const data = await res.json();
+  if (!data.roster || !Array.isArray(data.roster)) throw new Error('no roster');
+  return data.roster.map(r => ({ ...r, dt: new Date(r.d+'T00:00:00') }));
+}
+
+async function previewArchive(ym) {
   try {
-    const token = await Clerk.session.getToken();
-    const res = await fetch(`/api/archive?ym=${encodeURIComponent(ym)}`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (!data.roster || !Array.isArray(data.roster)) throw new Error('no roster');
-    storedRoster = data.roster.map(r => ({ ...r, dt: new Date(r.d+'T00:00:00') }));
+    const past = await _fetchArchiveRoster(ym);
+    _archiveViewBackup = { roster: storedRoster };
+    storedRoster = past;
     closeArchiveModal();
-    renderRosterFromStored();
-    const pb = document.getElementById('preview-btn');
-    if (pb) pb.style.display = 'inline-flex';
-    switchTab('roster');
-    saveState();
+    renderExcelPreview();
+    const ctrl = document.getElementById('control-pane');
+    const rsz  = document.getElementById('resizer');
+    const hdr  = document.getElementById('preview-header');
+    if (ctrl) ctrl.style.display = 'none';
+    if (rsz)  rsz.style.display  = 'none';
+    if (hdr)  hdr.style.display  = 'none';
+    switchTab('excel');
   } catch (e) {
-    console.error(e); alert('読み込みに失敗しました');
+    console.error(e); alert('プレビューに失敗しました\n' + (e?.message || e));
+  }
+}
+
+async function downloadArchive(ym) {
+  try {
+    const past = await _fetchArchiveRoster(ym);
+    const backup = storedRoster;
+    storedRoster = past;
+    try {
+      // ライト以上限定機能なので広告無しで即ダウンロード
+      exportExcel();
+    } finally {
+      storedRoster = backup;
+    }
+  } catch (e) {
+    console.error(e); alert('ダウンロードに失敗しました\n' + (e?.message || e));
   }
 }
 async function deleteArchive(ym) {
