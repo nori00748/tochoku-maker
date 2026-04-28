@@ -795,25 +795,27 @@
     #preview-btn { display: none; }
     /* ===== Excel出力プレビュー ===== */
     .excel-preview {
-      border-collapse: collapse; font-size: 13px;
+      border-collapse: collapse; font-size: 15px;
       font-family: 'Inter','Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif;
     }
     .excel-preview th, .excel-preview td {
-      border: 1px solid #888; padding: 5px 10px;
+      border: 1px solid #888; padding: 7px 12px;
       text-align: center; white-space: nowrap; vertical-align: middle;
     }
     .excel-preview thead th { background: #f1f5f9; font-weight: 700; }
     .excel-preview .ep-band { font-weight: 700; }
-    .excel-preview .ep-time { background: #fffde7; font-weight: 400; text-align: left; padding: 5px 10px; }
+    .excel-preview .ep-time { background: #fffde7; font-weight: 400; text-align: left; padding: 7px 12px; }
     .excel-preview .ep-time-head { background: #fffde7; font-weight: 700; }
     .excel-preview .ep-band-head { background: #f8fafc; font-weight: 700; }
     .excel-preview .ep-date { font-weight: 700; }
     #excel-view-toolbar {
-      display: flex; gap: 8px; align-items: center; margin-bottom: 14px;
-      padding-bottom: 12px; border-bottom: 1px solid var(--border);
+      display: flex; gap: 10px; align-items: center; margin-bottom: 16px;
+      padding-bottom: 14px; border-bottom: 1px solid var(--border);
+      font-size: 14px;
     }
+    #excel-view-toolbar select { font-size: 14px !important; padding: 7px 10px !important; }
     #excel-view-toolbar .ep-hint {
-      color: var(--muted); font-size: 12px; margin-left: auto;
+      color: var(--muted); font-size: 13px; margin-left: auto;
     }
 
     /* ===== 入力グリッド ===== */
@@ -1185,6 +1187,71 @@
     #name-clinics-popup .ncp-empty {
       color: #94a3b8; font-size: 11px; padding: 12px 4px; text-align: center; line-height: 1.5;
     }
+
+    /* ===== 文字サイズ全体引き上げ (上書き) ===== */
+    /* 出来上がり図 / 編集ビュー */
+    .roster-table { font-size: 14px; }
+    .roster-table th { font-size: 13px; padding: 7px 10px; }
+    .roster-table td { font-size: 14px; padding: 6px 8px; }
+    .roster-table .col-header-input { font-size: 13px; }
+    .biko-input { font-size: 13px; padding: 4px 6px; }
+
+    /* 勤務チェックグリッド */
+    .input-grid { font-size: 14px; }
+    .input-grid th { font-size: 13px; padding: 6px 8px; }
+    .input-grid td { padding: 4px 5px; }
+    .input-grid td.date-td { font-size: 13px; padding: 5px 8px; min-width: 32px; }
+    .cell-btn { font-size: 15px !important; width: 34px !important; height: 28px !important; }
+
+    /* グループ・担当者エリア */
+    .ctrl-block h3 { font-size: 14px !important; }
+    .name-add-row input[type=text],
+    .name-add-row select { font-size: 14px !important; padding: 7px 10px !important; }
+    .group-card-header input[type=text] { font-size: 14px !important; }
+    .group-card-header input[type=number] { font-size: 13px !important; }
+    .group-card-header .duty-label { font-size: 13px !important; }
+    .name-tag { font-size: 14px !important; padding: 6px 10px !important; }
+    .name-tag .nt-name { font-size: 14px !important; }
+    .clinic-badge { font-size: 12px !important; padding: 2px 7px !important; }
+
+    /* 日付入力・追加列 */
+    .date-row input[type=date] { font-size: 14px !important; padding: 7px 11px !important; }
+    .date-row .btn { font-size: 14px !important; }
+    .legend { font-size: 13px !important; }
+    .ctrl-block .name-add-row .btn { font-size: 14px !important; padding: 7px 14px !important; }
+
+    /* ボタン全般 */
+    .btn { font-size: 14px !important; }
+    .btn-outline, .btn-primary, .btn-secondary, .btn-success, .btn-add-group { padding: 7px 14px !important; }
+
+    /* 操作画面ヘッダー */
+    #control-header h2, #preview-header h2 { font-size: 16px !important; }
+    #title-bar .brand-name { font-size: 16px !important; }
+    #title-bar .brand-tag  { font-size: 12px !important; }
+
+    /* サマリーパネル(右側集計) */
+    #summary-panel { font-size: 13px !important; }
+    #summary-panel table { font-size: 12.5px !important; }
+
+    /* ポップアップ系 */
+    #name-clinics-popup .ncp-item { font-size: 14px !important; }
+    #work-days-popup { font-size: 14px !important; }
+
+    /* 詳細設定モーダル */
+    #rules-modal .rm-pane h3 { font-size: 18px !important; }
+    #rules-modal .rm-pane .rm-desc { font-size: 13px !important; }
+    #rules-modal .rm-row { font-size: 14px !important; }
+    #rules-modal .rm-table { font-size: 13px !important; }
+    #rules-modal .rm-nav-item { font-size: 14px !important; }
+    #rules-modal select, #rules-modal input[type=number], #rules-modal input[type=date] {
+      font-size: 14px !important; padding: 6px 10px !important;
+    }
+
+    /* 過去当直表モーダル */
+    #archive-modal .btn { font-size: 13px !important; }
+
+    /* ヘルプ・ステップ表示等 */
+    .legend, .duty-label { font-size: 13px !important; }
   </style>
 </head>
 <body>
@@ -4008,7 +4075,7 @@ function _renderPreviewNameDate(data) {
     if      (isHol) bg = '#fce4ec';
     else if (isSat) bg = '#daeef3';
     else if (isSun) bg = '#fde9d9';
-    return `<th style="background:${bg};min-width:32px;font-size:11px;">${row.dt.getDate()}<br><span style="font-weight:400;color:#64748b;font-size:10px;">${WD[row.w]}</span></th>`;
+    return `<th style="background:${bg};min-width:42px;font-size:14px;">${row.dt.getDate()}<br><span style="font-weight:400;color:#64748b;font-size:12px;">${WD[row.w]}</span></th>`;
   }).join('');
   const rows = orderedNames.map(name => {
     const tds = data.map(row => {
@@ -4018,9 +4085,9 @@ function _renderPreviewNameDate(data) {
       if      (isHol) bg = '#fce4ec';
       else if (isSat) bg = '#daeef3';
       else if (isSun) bg = '#fde9d9';
-      return `<td style="background:${bg};font-size:11px;text-align:center;padding:3px 4px;">${esc(lab)}</td>`;
+      return `<td style="background:${bg};font-size:14px;text-align:center;padding:6px 6px;">${esc(lab)}</td>`;
     }).join('');
-    return `<tr><td style="text-align:left;font-weight:600;white-space:nowrap;padding:4px 10px;background:#f8fafc;">${esc(name)}</td>${tds}</tr>`;
+    return `<tr><td style="text-align:left;font-weight:600;white-space:nowrap;padding:7px 14px;background:#f8fafc;font-size:15px;">${esc(name)}</td>${tds}</tr>`;
   }).join('');
   const monthLabel = `${data[0].dt.getMonth()+1}月`;
   return `
@@ -4029,7 +4096,7 @@ function _renderPreviewNameDate(data) {
         <thead><tr><th style="background:#f1f5f9;">${monthLabel}</th>${headerCells}</tr></thead>
         <tbody>${rows || '<tr><td colspan="' + (data.length+1) + '" style="color:#94a3b8;padding:20px;text-align:center;">担当者がいません</td></tr>'}</tbody>
       </table>
-      <div style="margin-top:12px;font-size:11px;color:#64748b;line-height:1.6;">
+      <div style="margin-top:14px;font-size:13px;color:#64748b;line-height:1.7;">
         凡例: <strong>当</strong>=当直 / <strong>日</strong>=日直 / <strong>オN</strong>=オンコールN / <strong>副N</strong>=副直N / 列名=外勤
       </div>
     </div>
@@ -4043,13 +4110,13 @@ function _renderPreviewNameWeek(data) {
   const tables = weeks.map((wk, wi) => {
     // wk.items は length=7 の配列。null は範囲外の日。
     const headerCells = wk.items.map((row, w) => {
-      if (!row) return `<th style="background:#f1f5f9;color:#cbd5e1;min-width:38px;">${WD[w]}</th>`;
+      if (!row) return `<th style="background:#f1f5f9;color:#cbd5e1;min-width:60px;font-size:14px;">${WD[w]}</th>`;
       const isSat = w===6, isSun = w===0, isHol = !!holidayDates[row.d];
       let bg = '';
       if      (isHol) bg = '#fce4ec';
       else if (isSat) bg = '#daeef3';
       else if (isSun) bg = '#fde9d9';
-      return `<th style="background:${bg};min-width:38px;font-size:11px;">${row.dt.getDate()}<br><span style="font-weight:400;color:#64748b;font-size:10px;">${WD[w]}</span></th>`;
+      return `<th style="background:${bg};min-width:60px;font-size:14px;">${row.dt.getDate()}<br><span style="font-weight:400;color:#64748b;font-size:12px;">${WD[w]}</span></th>`;
     }).join('');
     const rows = orderedNames.map(name => {
       const tds = wk.items.map((row, w) => {
@@ -4060,17 +4127,17 @@ function _renderPreviewNameWeek(data) {
         if      (isHol) bg = '#fce4ec';
         else if (isSat) bg = '#daeef3';
         else if (isSun) bg = '#fde9d9';
-        return `<td style="background:${bg};font-size:11px;text-align:center;padding:3px 4px;">${esc(lab)}</td>`;
+        return `<td style="background:${bg};font-size:14px;text-align:center;padding:6px 8px;">${esc(lab)}</td>`;
       }).join('');
-      return `<tr><td style="text-align:left;font-weight:600;white-space:nowrap;padding:4px 10px;background:#f8fafc;">${esc(name)}</td>${tds}</tr>`;
+      return `<tr><td style="text-align:left;font-weight:600;white-space:nowrap;padding:7px 14px;background:#f8fafc;font-size:15px;">${esc(name)}</td>${tds}</tr>`;
     }).join('');
     const wkLabel = wk.items.find(r => r) ? (() => {
       const first = wk.items.find(r => r);
       return `${first.dt.getMonth()+1}/${first.dt.getDate()} の週`;
     })() : '';
     return `
-      <div style="margin-bottom:24px;">
-        <div style="font-weight:700;color:#0f172a;margin-bottom:6px;font-size:14px;">第${wi+1}週 (${esc(wkLabel)})</div>
+      <div style="margin-bottom:28px;">
+        <div style="font-weight:700;color:#0f172a;margin-bottom:8px;font-size:16px;">第${wi+1}週 (${esc(wkLabel)})</div>
         <table class="excel-preview">
           <thead><tr><th style="background:#f1f5f9;">担当</th>${headerCells}</tr></thead>
           <tbody>${rows || '<tr><td colspan="8" style="color:#94a3b8;padding:20px;text-align:center;">担当者がいません</td></tr>'}</tbody>
@@ -4081,7 +4148,7 @@ function _renderPreviewNameWeek(data) {
   return `
     <div style="overflow:auto;max-width:100%;">
       ${tables}
-      <div style="font-size:11px;color:#64748b;line-height:1.6;">
+      <div style="font-size:13px;color:#64748b;line-height:1.7;">
         凡例: <strong>当</strong>=当直 / <strong>日</strong>=日直 / <strong>オN</strong>=オンコールN / <strong>副N</strong>=副直N / 列名=外勤
       </div>
     </div>
