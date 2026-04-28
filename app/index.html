@@ -1276,7 +1276,6 @@
       <h2>📋 出来上がり図</h2>
       <div id="preview-header-right">
         <button class="btn btn-outline" id="archive-btn" onclick="openArchiveModal()" title="過去の当直表を呼び出し" style="display:none;">📅 過去の当直表</button>
-        <button class="btn btn-outline" id="save-archive-btn" onclick="saveArchiveFromButton()" title="現在の当直表を月別アーカイブに保存(ライト以上)" style="display:none;">💾 月別保存</button>
         <button class="btn btn-outline" id="undo-btn" onclick="doUndo()" title="直前の操作を1つだけ戻す (Ctrl+Z)" disabled style="opacity:.4;cursor:not-allowed;">↶ 戻る</button>
         <button class="btn btn-primary" id="preview-btn" onclick="openExcelPreview()">📄 プレビュー</button>
       </div>
@@ -2027,6 +2026,7 @@ function toggleAllCells(ni) {
   if (!gridData[name]) return;
   const allMaru = currentDates.every(d => gridData[name][d]==='○');
   currentDates.forEach(d => { gridData[name][d] = allMaru ? '✕' : '○'; });
+  saveState();
   renderGrid();
 }
 
@@ -2037,6 +2037,7 @@ function toggleCell(ni, date) {
   gridData[name][date] = cur==='○'?'✕':'○';
   const btn = document.querySelector(`.cell-btn[data-ni="${ni}"][data-d="${date}"]`);
   if (btn) { const v=gridData[name][date]; btn.textContent=v; btn.className='cell-btn'+(v==='○'?' maru':' batsu'); }
+  saveState();
 }
 
 function renderGrid() {
@@ -2903,6 +2904,7 @@ function toggleSlot(date, ci) {
     td.textContent = v;
     td.className = 'slot-cell' + (v==='○'?' slot-maru':' slot-batsu');
   }
+  saveState();
 }
 
 // ===== Pre-assign drag/drop (プレビュー画面: 作成前の事前割り当て) =====
@@ -3884,6 +3886,7 @@ function renderExcelPreview() {
     <div id="excel-view-toolbar">
       <button class="btn btn-outline" onclick="closeExcelPreview()">← 編集に戻る</button>
       <button class="btn btn-success" onclick="exportExcel()">⬇ ダウンロード</button>
+      ${isLightOrAbove() ? `<button class="btn btn-outline" id="save-archive-btn" onclick="saveArchiveFromButton()" title="この当直表を月別アーカイブに保存">💾 月別保存</button>` : ''}
       ${isLightOrAbove() ? '' : '<span class="ep-hint">ダウンロードを押すと30秒の広告後にExcelファイルが保存されます。</span>'}
     </div>
     <div style="overflow:auto;max-width:100%;">
