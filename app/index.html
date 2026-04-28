@@ -4157,16 +4157,10 @@ function updateUndoButton() {
   btn.disabled = !can;
   btn.style.opacity = can ? '1' : '.4';
   btn.style.cursor  = can ? 'pointer' : 'not-allowed';
-  // ライト以上はステップ数を表示
-  if (isLightOrAbove() && can) {
-    btn.textContent = `↶ 戻る (${_undoStack.length})`;
-    btn.title = `直前の操作を戻す (Ctrl+Z)・残り${_undoStack.length}ステップ`;
-  } else {
-    btn.textContent = '↶ 戻る';
-    btn.title = isLightOrAbove()
-      ? '直前の操作を戻す (Ctrl+Z)'
-      : '直前の操作を1つだけ戻す (Ctrl+Z)・無制限はライト以上';
-  }
+  btn.textContent = '↶ 戻る';
+  btn.title = isLightOrAbove()
+    ? `直前の操作を戻す (Ctrl+Z)${can ? ' / 残り'+_undoStack.length+'ステップ' : ''}`
+    : '直前の操作を1つだけ戻す (Ctrl+Z) / 無制限はライト以上';
 }
 
 // 起動時に呼ばれる: APIから状態を取得して展開、UIを再描画
@@ -5497,20 +5491,22 @@ function _currentRosterYM() {
 }
 
 async function saveCurrentRosterToArchive() {
-  if (!isLightOrAbove() || !window.Clerk || !Clerk.session) return;
-  if (!storedRoster || !storedRoster.length) return;
+  if (!isLightOrAbove()) throw new Error('plan_required');
+  if (!window.Clerk || !Clerk.session) throw new Error('not_signed_in');
+  if (!storedRoster || !storedRoster.length) throw new Error('no_roster');
   const ym = _currentRosterYM();
-  if (!ym) return;
-  try {
-    const token = await Clerk.session.getToken();
-    const rosterPlain = storedRoster.map(({ dt, ...rest }) => rest);
-    await fetch('/api/archive', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ ym, roster: rosterPlain })
-    });
-  } catch (e) {
-    console.error('archive save error', e);
+  if (!ym) throw new Error('no_ym');
+  const token = await Clerk.session.getToken();
+  const rosterPlain = storedRoster.map(({ dt, ...rest }) => rest);
+  const res = await fetch('/api/archive', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ ym, roster: rosterPlain })
+  });
+  if (!res.ok) {
+    let detail = '';
+    try { const j = await res.json(); detail = j.detail || j.error || ''; } catch {}
+    throw new Error(`HTTP ${res.status}${detail ? ': '+detail : ''}`);
   }
 }
 
@@ -5595,11 +5591,11 @@ async function saveArchiveFromButton() {
   try {
     await saveCurrentRosterToArchive();
     if (btn) { btn.textContent = '✅ 保存しました'; setTimeout(()=>{ btn.disabled=false; btn.textContent='💾 月別保存'; }, 1500); }
-    // 過去回数も更新
     loadPastDutyCounts();
   } catch (e) {
+    console.error('archive save error', e);
     if (btn) { btn.disabled = false; btn.textContent = '💾 月別保存'; }
-    alert('保存に失敗しました');
+    alert('保存に失敗しました\n' + (e?.message || e));
   }
 }
 
