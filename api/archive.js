@@ -107,12 +107,13 @@ export default async function handler(req, res) {
     if (!body || !body.ym || !/^\d{4}-\d{2}$/.test(body.ym) || !body.roster) {
       return res.status(400).json({ error: 'bad_body' });
     }
-    const approx = JSON.stringify(body.roster).length;
-    if (approx > 1024 * 1024) return res.status(413).json({ error: 'roster_too_large' });
+    const rosterJson = JSON.stringify(body.roster);
+    if (rosterJson.length > 1024 * 1024) return res.status(413).json({ error: 'roster_too_large' });
     try {
+      // 配列を JSONB に格納するため、明示的に文字列化 + ::jsonb キャスト
       await sql`
         INSERT INTO roster_archive (clerk_user_id, year_month, roster_json, updated_at)
-        VALUES (${userId}, ${body.ym}, ${body.roster}, NOW())
+        VALUES (${userId}, ${body.ym}, ${rosterJson}::jsonb, NOW())
         ON CONFLICT (clerk_user_id, year_month) DO UPDATE
         SET roster_json = EXCLUDED.roster_json, updated_at = NOW()
       `;
