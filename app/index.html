@@ -3845,16 +3845,94 @@ function closeExcelPreview() {
   switchTab('roster');
 }
 
+// プレビュー表示モード: 'date-clinic' (日付×外勤先) / 'name-date' (担当者×日付) / 'name-week' (週ごと)
+let _previewViewType = 'date-clinic';
+function setPreviewViewType(v) {
+  _previewViewType = v;
+  renderExcelPreview();
+}
+
+// ある行(その日の当直表)で、指定された担当者がどんな勤務をしているかの短縮ラベルを返す
+function _assignmentLabelsForName(row, name) {
+  const labels = [];
+  if (row.duty === name)    labels.push('当');
+  if (row.nichoku === name) labels.push('日');
+  Object.entries(row.clinics || {}).forEach(([ci, n]) => {
+    if (n !== name) return;
+    const col = COLS[Number(ci)+1];
+    if (!col) return;
+    if (col.isOnCall) {
+      const m = col.label.match(/\d+$/);
+      labels.push('オ' + (m ? m[0] : ''));
+    } else if (col.isSubduty) {
+      const m = col.label.match(/\d+$/);
+      labels.push('副' + (m ? m[0] : ''));
+    } else {
+      labels.push(col.label);
+    }
+  });
+  Object.entries(row.clinicsNichoku || {}).forEach(([ci, n]) => {
+    if (n !== name) return;
+    const col = COLS[Number(ci)+1];
+    if (!col) return;
+    if (col.isOnCall) labels.push('オ日');
+    else if (col.isSubduty) labels.push('副日');
+  });
+  return labels.join('/');
+}
+
+function _datesByCalendarWeek(rows) {
+  // 日曜開始の暦週でグループ化。各週は { weekStart, items: [{row, w} ... 7マス] }
+  if (!rows.length) return [];
+  const weeks = [];
+  let cur = null;
+  rows.forEach(row => {
+    const w = row.w;
+    if (!cur || w === 0) {
+      cur = { items: Array(7).fill(null), weekStart: row.d };
+      weeks.push(cur);
+    }
+    cur.items[w] = row;
+  });
+  return weeks;
+}
+
 function renderExcelPreview() {
   const data = storedRoster;
   const view = document.getElementById('excel-view');
   if (!view || !data || !data.length) return;
 
+  // ── 共通ツールバー ──
+  const toolbar = `
+    <div id="excel-view-toolbar">
+      <button class="btn btn-outline" onclick="closeExcelPreview()">← 編集に戻る</button>
+      <button class="btn btn-success" onclick="exportExcel()">⬇ ダウンロード</button>
+      ${(isLightOrAbove() && !_archiveViewBackup) ? `<button class="btn btn-outline" id="save-archive-btn" onclick="saveArchiveFromButton()" title="この当直表を月別アーカイブに保存">💾 月別保存</button>` : ''}
+      ${_archiveViewBackup ? '<span class="ep-hint" style="color:#0369a1;font-weight:600;">📅 過去当直表を閲覧中</span>' : ''}
+      <span style="margin-left:12px;font-size:12px;color:#475569;font-weight:600;">表示:</span>
+      <select onchange="setPreviewViewType(this.value)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+        <option value="date-clinic" ${_previewViewType==='date-clinic'?'selected':''}>日付 × 外勤先</option>
+        <option value="name-date"   ${_previewViewType==='name-date'?'selected':''}>担当者 × 日付</option>
+        <option value="name-week"   ${_previewViewType==='name-week'?'selected':''}>担当者 × 日付 (週ごと)</option>
+      </select>
+      ${isLightOrAbove() ? '' : '<span class="ep-hint">ダウンロードを押すと30秒の広告後にExcelファイルが保存されます。</span>'}
+    </div>
+  `;
+
+  let body = '';
+  if (_previewViewType === 'name-date')      body = _renderPreviewNameDate(data);
+  else if (_previewViewType === 'name-week') body = _renderPreviewNameWeek(data);
+  else                                       body = _renderPreviewDateClinic(data);
+
+  view.innerHTML = toolbar + body;
+}
+
+// View 1: 日付 × 外勤先 (従来表示)
+function _renderPreviewDateClinic(data) {
   const firstDt = data[0].dt;
   const monthLabel = `${firstDt.getMonth()+1}月`;
   const BAND_COLOR = { '外来':'#dbeafe', '日直':'#fef9c3', '当直':'#ede9fe', '日当直':'#ffedd5' };
   const BAND_TEXT  = { '外来':'#1d4ed8', '日直':'#a16207', '当直':'#6d28d9', '日当直':'#9a3412' };
-
   const tdRow = (row) => {
     const { d, dt, w, duty, nichoku, clinics, clinicsNichoku } = row;
     const isHoliday = !!holidayDates[d];
@@ -3863,11 +3941,9 @@ function renderExcelPreview() {
     if      (isHoliday) { rowBg='#fce4ec'; dateBg='#f48fb1'; }
     else if (isSat)     { rowBg='#daeef3'; dateBg='#c8e6f0'; }
     else if (isSun)     { rowBg='#fde9d9'; dateBg='#f9c9ac'; }
-
     const dutyCell = splitDays[d]
       ? ((nichoku||'') && (duty||'') ? `${nichoku}／${duty}` : (nichoku || duty || ''))
       : (duty || '');
-
     const clinicCells = COLS.slice(1).map((col, ci) => {
       const splittable = col.isOnCall || col.isSubduty;
       let v = '';
@@ -3880,7 +3956,6 @@ function renderExcelPreview() {
       }
       return `<td style="background:${rowBg};">${esc(v)}</td>`;
     }).join('');
-
     return `<tr>
       <td class="ep-date" style="background:${dateBg};">${dt.getDate()}</td>
       <td style="background:${rowBg};">${WD[w]}</td>
@@ -3888,15 +3963,7 @@ function renderExcelPreview() {
       ${clinicCells}
     </tr>`;
   };
-
-  let html = `
-    <div id="excel-view-toolbar">
-      <button class="btn btn-outline" onclick="closeExcelPreview()">← 編集に戻る</button>
-      <button class="btn btn-success" onclick="exportExcel()">⬇ ダウンロード</button>
-      ${(isLightOrAbove() && !_archiveViewBackup) ? `<button class="btn btn-outline" id="save-archive-btn" onclick="saveArchiveFromButton()" title="この当直表を月別アーカイブに保存">💾 月別保存</button>` : ''}
-      ${_archiveViewBackup ? '<span class="ep-hint" style="color:#0369a1;font-weight:600;">📅 過去当直表を閲覧中</span>' : ''}
-      ${isLightOrAbove() ? '' : '<span class="ep-hint">ダウンロードを押すと30秒の広告後にExcelファイルが保存されます。</span>'}
-    </div>
+  return `
     <div style="overflow:auto;max-width:100%;">
       <table class="excel-preview">
         <thead>
@@ -3930,7 +3997,95 @@ function renderExcelPreview() {
       </table>
     </div>
   `;
-  view.innerHTML = html;
+}
+
+// View 2: 担当者 × 日付 (1ヶ月)
+function _renderPreviewNameDate(data) {
+  const orderedNames = (typeof getOrderedNames === 'function') ? getOrderedNames() : names;
+  const headerCells = data.map(row => {
+    const isSat = row.w === 6, isSun = row.w === 0, isHol = !!holidayDates[row.d];
+    let bg = '';
+    if      (isHol) bg = '#fce4ec';
+    else if (isSat) bg = '#daeef3';
+    else if (isSun) bg = '#fde9d9';
+    return `<th style="background:${bg};min-width:32px;font-size:11px;">${row.dt.getDate()}<br><span style="font-weight:400;color:#64748b;font-size:10px;">${WD[row.w]}</span></th>`;
+  }).join('');
+  const rows = orderedNames.map(name => {
+    const tds = data.map(row => {
+      const lab = _assignmentLabelsForName(row, name);
+      const isSat = row.w === 6, isSun = row.w === 0, isHol = !!holidayDates[row.d];
+      let bg = '';
+      if      (isHol) bg = '#fce4ec';
+      else if (isSat) bg = '#daeef3';
+      else if (isSun) bg = '#fde9d9';
+      return `<td style="background:${bg};font-size:11px;text-align:center;padding:3px 4px;">${esc(lab)}</td>`;
+    }).join('');
+    return `<tr><td style="text-align:left;font-weight:600;white-space:nowrap;padding:4px 10px;background:#f8fafc;">${esc(name)}</td>${tds}</tr>`;
+  }).join('');
+  const monthLabel = `${data[0].dt.getMonth()+1}月`;
+  return `
+    <div style="overflow:auto;max-width:100%;">
+      <table class="excel-preview">
+        <thead><tr><th style="background:#f1f5f9;">${monthLabel}</th>${headerCells}</tr></thead>
+        <tbody>${rows || '<tr><td colspan="' + (data.length+1) + '" style="color:#94a3b8;padding:20px;text-align:center;">担当者がいません</td></tr>'}</tbody>
+      </table>
+      <div style="margin-top:12px;font-size:11px;color:#64748b;line-height:1.6;">
+        凡例: <strong>当</strong>=当直 / <strong>日</strong>=日直 / <strong>オN</strong>=オンコールN / <strong>副N</strong>=副直N / 列名=外勤
+      </div>
+    </div>
+  `;
+}
+
+// View 3: 担当者 × 日付 (週ごと)
+function _renderPreviewNameWeek(data) {
+  const orderedNames = (typeof getOrderedNames === 'function') ? getOrderedNames() : names;
+  const weeks = _datesByCalendarWeek(data);
+  const tables = weeks.map((wk, wi) => {
+    // wk.items は length=7 の配列。null は範囲外の日。
+    const headerCells = wk.items.map((row, w) => {
+      if (!row) return `<th style="background:#f1f5f9;color:#cbd5e1;min-width:38px;">${WD[w]}</th>`;
+      const isSat = w===6, isSun = w===0, isHol = !!holidayDates[row.d];
+      let bg = '';
+      if      (isHol) bg = '#fce4ec';
+      else if (isSat) bg = '#daeef3';
+      else if (isSun) bg = '#fde9d9';
+      return `<th style="background:${bg};min-width:38px;font-size:11px;">${row.dt.getDate()}<br><span style="font-weight:400;color:#64748b;font-size:10px;">${WD[w]}</span></th>`;
+    }).join('');
+    const rows = orderedNames.map(name => {
+      const tds = wk.items.map((row, w) => {
+        if (!row) return `<td style="background:#fafafa;"></td>`;
+        const lab = _assignmentLabelsForName(row, name);
+        const isSat = w===6, isSun = w===0, isHol = !!holidayDates[row.d];
+        let bg = '';
+        if      (isHol) bg = '#fce4ec';
+        else if (isSat) bg = '#daeef3';
+        else if (isSun) bg = '#fde9d9';
+        return `<td style="background:${bg};font-size:11px;text-align:center;padding:3px 4px;">${esc(lab)}</td>`;
+      }).join('');
+      return `<tr><td style="text-align:left;font-weight:600;white-space:nowrap;padding:4px 10px;background:#f8fafc;">${esc(name)}</td>${tds}</tr>`;
+    }).join('');
+    const wkLabel = wk.items.find(r => r) ? (() => {
+      const first = wk.items.find(r => r);
+      return `${first.dt.getMonth()+1}/${first.dt.getDate()} の週`;
+    })() : '';
+    return `
+      <div style="margin-bottom:24px;">
+        <div style="font-weight:700;color:#0f172a;margin-bottom:6px;font-size:14px;">第${wi+1}週 (${esc(wkLabel)})</div>
+        <table class="excel-preview">
+          <thead><tr><th style="background:#f1f5f9;">担当</th>${headerCells}</tr></thead>
+          <tbody>${rows || '<tr><td colspan="8" style="color:#94a3b8;padding:20px;text-align:center;">担当者がいません</td></tr>'}</tbody>
+        </table>
+      </div>
+    `;
+  }).join('');
+  return `
+    <div style="overflow:auto;max-width:100%;">
+      ${tables}
+      <div style="font-size:11px;color:#64748b;line-height:1.6;">
+        凡例: <strong>当</strong>=当直 / <strong>日</strong>=日直 / <strong>オN</strong>=オンコールN / <strong>副N</strong>=副直N / 列名=外勤
+      </div>
+    </div>
+  `;
 }
 
 // ===== State save/load =====
