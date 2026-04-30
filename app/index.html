@@ -1330,7 +1330,7 @@
 <!-- ゲストモード時のお知らせバナー -->
 <div id="guest-banner">
   <span class="gb-msg">
-    <strong>お試し中</strong>:データはこのブラウザにのみ保存されます。会員登録すると別の端末でも見られます。
+    <strong>お試し中</strong>:データは保存されません。ページを閉じる/リロードすると消えます。会員登録すれば自動保存・別端末からも閲覧できます。
   </span>
   <button class="gb-cta" onclick="openSignIn()">会員登録</button>
   <button class="gb-close" onclick="hideGuestBanner()" title="閉じる">×</button>
@@ -4602,17 +4602,13 @@ function _apiSaveStateDebounced() {
   }, 800);
 }
 
-// ゲストモード: localStorage に保存
-function _saveToLocalStorage() {
-  try {
-    localStorage.setItem(GUEST_DATA_KEY, JSON.stringify(_buildStateBlob()));
-  } catch (e) {}
-}
+// ゲストモード: 永続化しない (お試し中はメモリのみ。会員登録誘導のため意図的に保存しない)
+function _saveToLocalStorage() { /* no-op */ }
 
 // モードに応じて保存先を切り替え
 function _persist() {
   if (_mode === 'cloud') _apiSaveStateDebounced();
-  else if (_mode === 'guest') _saveToLocalStorage();
+  // ゲストモードは保存しない (リロード/再訪でリセット)
 }
 
 // 互換用: 既存コードからの呼び出しを受ける
@@ -6305,29 +6301,12 @@ function continueAsGuest() {
   showGuestBanner();
 }
 
-// ゲストモードでのアプリ初期化(localStorageから復元)
+// ゲストモードでのアプリ初期化 (お試し中は永続化しない: 会員登録誘導のため)
 function _initAppGuest() {
-  // localStorage から保存データを復元
-  try {
-    const raw = localStorage.getItem(GUEST_DATA_KEY);
-    if (raw) {
-      const s = JSON.parse(raw);
-      _applyStateBlob(s);
-      if (currentDates.length) {
-        const sd = document.getElementById('start-date');
-        const ed = document.getElementById('end-date');
-        if (sd) sd.value = currentDates[0];
-        if (ed) ed.value = currentDates[currentDates.length-1];
-      }
-      // 無料プランは storedRoster を保存しないため reopen 時は編集ビューで開始
-      if (currentDates.length) {
-        applyWorkPatternsToDates(); // ルールから slotData/dutyOpen を再構築
-        renderPreviewEditable();
-      }
-    }
-  } catch (e) {}
+  // 旧バージョンで保存された localStorage データがあれば破棄 (新仕様: ゲストは保存しない)
+  try { localStorage.removeItem(GUEST_DATA_KEY); } catch (e) {}
 
-  // 新規・既存とも初期日付未設定なら今月をセット
+  // 初期日付未設定なら今月をセット
   if (!currentDates.length) {
     const t = new Date(), y = t.getFullYear(), m = String(t.getMonth()+1).padStart(2,'0');
     const last = new Date(t.getFullYear(), t.getMonth()+1, 0);
