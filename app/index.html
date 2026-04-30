@@ -1367,9 +1367,12 @@
         <div id="groups-and-names" class="ctrl-block">
           <h3 style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
             <span>グループ・担当者</span>
-            <button class="gear-btn" id="rules-gear-btn" onclick="openRulesModal()" title="振り分け条件詳細設定">
-              ⚙ 詳細設定<span id="rules-gear-lock" class="gear-lock" style="display:none;">⚡ライト</span>
-            </button>
+            <span style="display:flex;gap:6px;">
+              <button class="gear-btn" onclick="openExcelImport()" title="既存のExcel/CSVから担当者・外勤先を一括取り込み">📥 Excel取込</button>
+              <button class="gear-btn" id="rules-gear-btn" onclick="openRulesModal()" title="振り分け条件詳細設定">
+                ⚙ 詳細設定<span id="rules-gear-lock" class="gear-lock" style="display:none;">⚡ライト</span>
+              </button>
+            </span>
           </h3>
           <!-- 担当者追加 -->
           <div class="name-add-row">
@@ -3877,6 +3880,231 @@ function toggleExcelView() {
   switchTab(isExcel ? 'roster' : 'excel');
 }
 
+// =============================================================
+// Excel/CSV 取込: 担当者名 + 外勤先名 の自動抽出 (全プラン共通)
+// =============================================================
+let _importPending = { names: [], clinics: [] }; // 直近の抽出結果
+
+function openExcelImport() {
+  const m = document.getElementById('import-modal');
+  if (!m) return;
+  m.style.display = 'flex';
+  document.getElementById('import-result').innerHTML = '';
+  const btn = document.getElementById('import-confirm-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
+  _importPending = { names: [], clinics: [] };
+}
+function closeExcelImport() {
+  const m = document.getElementById('import-modal');
+  if (m) m.style.display = 'none';
+  const inp = document.getElementById('import-file-input');
+  if (inp) inp.value = '';
+}
+
+async function handleExcelImportFile(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const result = document.getElementById('import-result');
+  result.innerHTML = '<div style="color:#64748b;padding:14px;">読み取り中…</div>';
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const allCells = [];
+    wb.SheetNames.forEach(sn => {
+      const sheet = wb.Sheets[sn];
+      const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      data.forEach(row => row.forEach(cell => {
+        const s = String(cell || '').trim();
+        if (s) allCells.push(s);
+      }));
+    });
+    const { names: candNames, clinics: candClinics } = _extractImportCandidates(allCells);
+    _importPending = { names: candNames, clinics: candClinics };
+    _renderImportCandidates();
+  } catch (e) {
+    console.error('excel import error', e);
+    result.innerHTML = '<div style="color:#b91c1c;padding:14px;">読み取りに失敗しました: ' + esc(String(e?.message||e)) + '</div>';
+  }
+}
+
+// ヒューリスティック抽出: 全セル文字列から担当者名・外勤先名候補を返す
+function _extractImportCandidates(cells) {
+  // 重み付け: 出現回数が多いもの優先
+  const nameMap = new Map();
+  const clinicMap = new Map();
+
+  // ヘッダー的キーワードや一般語をNG扱い (担当者名にはしない)
+  const NG_TOKENS = new Set([
+    '氏名','担当','医師','勤務','勤務医','名前','スタッフ','人数','回数','合計','計',
+    '当直','日直','外勤','副直','オンコール','待機','備考','区分','部署','診療科',
+    '月','火','水','木','金','土','日','曜日','平日','休日','土日','祝日','祝',
+    '勤務日','勤務帯','勤務先','勤務時間','回復時間',
+    '小計','総計','Total','total','名','医員','医員数','人','名医','医長',
+    '研修医','専攻医','指導医','部長','医局長',
+    '予定','希望','確定','仮','例','備考欄'
+  ]);
+  const NG_REGEX = [
+    /^[0-9０-９\s\-:：\/年月日時分秒\.\(\)（）]+$/, // 数字・日付・時刻のみ
+    /^[○◯×✕△□■●○◎\s]+$/,                     // 記号のみ
+    /^(月|火|水|木|金|土|日)曜?$/,                // 曜日
+    /^[0-9]{1,2}月$/,                              // 1月..12月
+    /^[A-Za-z0-9]+$/,                              // 半角英数のみ (主にIDなど)
+    /^.{0,1}$/,                                    // 1文字以下
+    /^.{13,}$/                                     // 13文字以上 (担当者名としては長すぎ)
+  ];
+
+  // 外勤先(医療機関)末尾キーワード
+  const CLINIC_TAIL = /(病院|医院|クリニック|診療所|医療(?:センター|機構)?|センター|メディカル|レディースクリニック|ホスピタル|サナトリウム|総合病院|大学病院|附属病院|医療法人)$/;
+  // 診療科名のみ (○○外科 などは外勤先候補として拾う)
+  const CLINIC_DEPT_TAIL = /(内科|外科|皮膚科|眼科|耳鼻科|耳鼻咽喉科|小児科|産婦人科|婦人科|産科|整形外科|脳外科|脳神経外科|泌尿器科|形成外科|心療内科|精神科|麻酔科|放射線科|歯科|歯科口腔外科|口腔外科|リハビリテーション科|リハ科|消化器内科|循環器内科|呼吸器内科|血液内科|腎臓内科|神経内科|糖尿病内科|内分泌内科|総合診療科|救急科|救命センター)$/;
+
+  const looksLikeClinic = (s) => {
+    if (s.length < 2 || s.length > 30) return false;
+    return CLINIC_TAIL.test(s) || CLINIC_DEPT_TAIL.test(s);
+  };
+
+  const looksLikeName = (s) => {
+    if (s.length < 2 || s.length > 12) return false;
+    if (NG_TOKENS.has(s)) return false;
+    for (const r of NG_REGEX) if (r.test(s)) return false;
+    // 末尾「先生」「医師」「Dr.」を取り除く
+    let cand = s.replace(/[\s ]?(先生|医師|Dr\.?)$/u, '').trim();
+    if (cand !== s && cand.length >= 2 && /^[一-龥々ヶー\sA-Za-z]+$/u.test(cand)) {
+      return cand; // 加工後の名前を返す
+    }
+    // 漢字2-4文字
+    if (/^[一-龥々]{2,4}$/u.test(s)) return s;
+    // 漢字+空白+漢字 (姓+名)
+    if (/^[一-龥々]{1,3}[\s 　][一-龥々]{1,3}$/u.test(s)) return s.replace(/[\s 　]/g, '');
+    // 漢字+カタカナ (例: 田中スミス)
+    if (/^[一-龥々]{1,3}[ァ-ヶー]{2,8}$/u.test(s)) return s;
+    return false;
+  };
+
+  cells.forEach(cell => {
+    if (looksLikeClinic(cell)) {
+      clinicMap.set(cell, (clinicMap.get(cell) || 0) + 1);
+      return;
+    }
+    const n = looksLikeName(cell);
+    if (n) {
+      nameMap.set(n, (nameMap.get(n) || 0) + 1);
+    }
+  });
+
+  // ノイズ削減: 1回しか出現しない名前で、かつ "<姓>" 単独 (1文字+1文字でも普通の単語) は除外しない
+  // ここではシンプルに全部含めて UI で外してもらう
+
+  // 出現回数が多い順、同数なら最初に見つかった順 (Map は挿入順を保つ)
+  const sortByCount = (a, b) => b[1] - a[1];
+  const namesArr = [...nameMap.entries()].sort(sortByCount).map(([k]) => k);
+  const clinicsArr = [...clinicMap.entries()].sort(sortByCount).map(([k]) => k);
+  return { names: namesArr, clinics: clinicsArr };
+}
+
+function _renderImportCandidates() {
+  const result = document.getElementById('import-result');
+  const { names: cn, clinics: cc } = _importPending;
+  if (!cn.length && !cc.length) {
+    result.innerHTML = '<div style="color:#94a3b8;padding:18px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;text-align:center;">候補が見つかりませんでした。別のファイルを試してみてください。</div>';
+    return;
+  }
+  // 既存の名前/外勤先と重複しているものは初期チェックを外す
+  const existingNames = new Set(names);
+  const existingClinics = new Set(COLS.slice(1).map(c => c.label));
+
+  const renderList = (title, arr, kind, existingSet) => {
+    if (!arr.length) return `
+      <div style="margin-bottom:14px;">
+        <div style="font-weight:700;color:#0f172a;margin-bottom:6px;font-size:14px;">${title} <span style="color:#94a3b8;font-weight:500;font-size:12px;">(候補なし)</span></div>
+      </div>`;
+    const items = arr.map((v, i) => {
+      const dup = existingSet.has(v);
+      const id = `imp-${kind}-${i}`;
+      return `<label style="display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid ${dup?'#fde68a':'#e2e8f0'};border-radius:999px;background:${dup?'#fffbeb':'#fff'};cursor:pointer;font-size:13px;">
+        <input type="checkbox" id="${id}" data-kind="${kind}" data-value="${escQ(v)}" ${dup?'':'checked'} style="width:14px;height:14px;cursor:pointer;">
+        <span>${esc(v)}${dup?' <span style="color:#92400e;font-size:11px;">(既存)</span>':''}</span>
+      </label>`;
+    }).join('');
+    return `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <span style="font-weight:700;color:#0f172a;font-size:14px;">${title}</span>
+          <span style="color:#64748b;font-size:12px;">(${arr.length}件)</span>
+          <button onclick="_importToggleAll('${kind}', true)" style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:11px;color:#475569;">全選択</button>
+          <button onclick="_importToggleAll('${kind}', false)" style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:11px;color:#475569;">全解除</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">${items}</div>
+      </div>`;
+  };
+
+  result.innerHTML = `
+    ${renderList('👤 担当者の候補', cn, 'name', existingNames)}
+    ${renderList('🏥 外勤先の候補', cc, 'clinic', existingClinics)}
+    <div style="margin-top:8px;padding:10px 12px;background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;font-size:12px;line-height:1.6;">
+      💡 黄色は既に登録済みの項目です。チェックを入れたものだけが追加で登録されます。
+    </div>
+  `;
+  const btn = document.getElementById('import-confirm-btn');
+  if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+}
+
+function _importToggleAll(kind, on) {
+  document.querySelectorAll(`#import-result input[type=checkbox][data-kind="${kind}"]`)
+    .forEach(c => c.checked = on);
+}
+
+function confirmExcelImport() {
+  const checks = document.querySelectorAll('#import-result input[type=checkbox]:checked');
+  const newNames = [];
+  const newClinics = [];
+  checks.forEach(c => {
+    const v = c.dataset.value;
+    const k = c.dataset.kind;
+    if (k === 'name')   newNames.push(v);
+    if (k === 'clinic') newClinics.push(v);
+  });
+  if (!newNames.length && !newClinics.length) {
+    alert('登録する項目が選択されていません');
+    return;
+  }
+  // 登録: 既存と重複するものはスキップ
+  const existingNames = new Set(names);
+  const existingClinics = new Set(COLS.slice(1).map(c => c.label));
+  const defaultGid = groups[0]?.id;
+  let addedN = 0, addedC = 0;
+  newNames.forEach(n => {
+    if (existingNames.has(n)) return;
+    names.push(n);
+    if (!nameGroups[n] && defaultGid) nameGroups[n] = defaultGid;
+    if (!gridData[n])     gridData[n]     = {};
+    if (!nameOutsides[n]) nameOutsides[n] = [];
+    addedN++;
+  });
+  newClinics.forEach(label => {
+    if (existingClinics.has(label)) return;
+    COLS.push({ label, allDays: false });
+    // デフォルトを「外来」勤務帯にする (既存の addColumn と整合)
+    const ci = COLS.length - 2;
+    colBand[ci] = '外来';
+    if (typeof BAND_DEFAULTS !== 'undefined' && BAND_DEFAULTS['外来']) {
+      bikoData[label] = BAND_DEFAULTS['外来'].time;
+      recoveryData[label] = BAND_DEFAULTS['外来'].recovery;
+    }
+    addedC++;
+  });
+  // 日付があれば slot/dutyOpen をリビルド
+  if (currentDates.length) applyWorkPatternsToDates();
+  saveState();
+  updateGroupSelect();
+  renderGroupsAndNames();
+  renderGrid();
+  if (storedRoster) renderRosterFromStored();
+  else if (currentDates.length) renderPreviewEditable();
+  closeExcelImport();
+  alert(`登録しました\n担当者: ${addedN}名\n外勤先: ${addedC}件`);
+}
+
 // ===== Excel出力プレビュー =====
 function openExcelPreview() {
   if (!storedRoster || !storedRoster.length) {
@@ -6222,6 +6450,28 @@ async function _waitForClerk() {
     <button class="ncp-close" onclick="closeNameClinicsPopup()" title="閉じる">×</button>
   </div>
   <div id="ncp-list" class="ncp-list"></div>
+</div>
+
+<!-- Excel取込 モーダル(全プラン共通) -->
+<div id="import-modal" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;z-index:9680;background:rgba(15,23,42,.5);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:14px;width:680px;max-width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 48px rgba(0,0,0,.25);">
+    <div style="padding:14px 18px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="margin:0;font-size:16px;font-weight:700;color:#0f172a;">📥 Excelから取り込み</h3>
+      <button onclick="closeExcelImport()" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:5px 12px;cursor:pointer;color:#475569;font-weight:600;font-size:13px;">閉じる</button>
+    </div>
+    <div id="import-body" style="padding:16px 18px;overflow-y:auto;flex:1;font-size:14px;color:#334155;">
+      <div style="color:#64748b;line-height:1.7;">Excel/CSV ファイルを選択すると、担当者名と外勤先名の候補を自動抽出します。<br>抽出された候補から登録したいものをチェックして「登録」を押してください。</div>
+      <div style="margin-top:14px;text-align:center;">
+        <button class="btn btn-primary" onclick="document.getElementById('import-file-input').click()" style="font-size:14px;padding:10px 22px;">📁 ファイルを選択</button>
+        <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleExcelImportFile(event)">
+      </div>
+      <div id="import-result" style="margin-top:16px;"></div>
+    </div>
+    <div style="padding:12px 18px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="closeExcelImport()" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 14px;cursor:pointer;color:#475569;font-weight:600;font-size:13px;">キャンセル</button>
+      <button id="import-confirm-btn" onclick="confirmExcelImport()" disabled style="background:#2563eb;border:none;border-radius:8px;padding:8px 18px;cursor:pointer;color:#fff;font-weight:700;font-size:13px;opacity:.5;">登録</button>
+    </div>
+  </div>
 </div>
 
 <!-- 過去当直表アーカイブモーダル(ライト以上) -->
