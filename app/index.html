@@ -3881,6 +3881,35 @@ function toggleExcelView() {
 }
 
 // =============================================================
+// ウェルカムモーダル (初回 or 担当者ゼロ時に表示)
+// =============================================================
+function showWelcomeModal() {
+  const m = document.getElementById('welcome-modal');
+  if (m) m.style.display = 'flex';
+}
+function closeWelcomeModal() {
+  const m = document.getElementById('welcome-modal');
+  if (m) m.style.display = 'none';
+}
+function onWelcomeImport() {
+  closeWelcomeModal();
+  openExcelImport();
+}
+function onWelcomeManual() {
+  closeWelcomeModal();
+  // 初回ならツアー開始
+  if (!localStorage.getItem(STORAGE_TUTORIAL)) openTour();
+}
+// 担当者ゼロのとき表示。それ以外は (初回なら) ツアーへフォールバック。
+function maybeShowWelcomeOrTour() {
+  if (!names.length) {
+    showWelcomeModal();
+  } else if (!localStorage.getItem(STORAGE_TUTORIAL)) {
+    openTour();
+  }
+}
+
+// =============================================================
 // Excel/CSV 取込: 担当者名 + 外勤先名 の自動抽出 (全プラン共通)
 // =============================================================
 let _importPending = { names: [], clinics: [] }; // 直近の抽出結果
@@ -6326,7 +6355,7 @@ function _initAppGuest() {
   updateSubDutyButton();
   renderGrid();
 
-  if (!localStorage.getItem(STORAGE_TUTORIAL)) openTour();
+  maybeShowWelcomeOrTour();
 }
 
 async function _initAppForUser() {
@@ -6380,8 +6409,8 @@ async function _initAppForUser() {
   applyPlanToUI();
   handleCheckoutReturn();
 
-  // 初回ユーザーのみツアー
-  if (!localStorage.getItem(STORAGE_TUTORIAL)) openTour();
+  // 担当者ゼロならウェルカム、それ以外で初回ならツアー
+  maybeShowWelcomeOrTour();
 }
 
 // グローバルなショートカット・クリックリスナーは認証状態に関わらず登録(常時必要)
@@ -6497,6 +6526,18 @@ async function _waitForClerk() {
     <button class="ncp-close" onclick="closeNameClinicsPopup()" title="閉じる">×</button>
   </div>
   <div id="ncp-list" class="ncp-list"></div>
+</div>
+
+<!-- ウェルカムモーダル(初回・担当者ゼロ時) -->
+<div id="welcome-modal" role="dialog" aria-modal="true" style="display:none;position:fixed;inset:0;z-index:9750;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;width:460px;max-width:100%;padding:32px 28px;box-shadow:0 20px 48px rgba(0,0,0,.25);text-align:center;">
+    <div style="width:60px;height:60px;border-radius:14px;margin:0 auto 16px;background:linear-gradient(135deg,#3b82f6,#1e40af);color:#fff;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;">当</div>
+    <h3 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#0f172a;letter-spacing:-.01em;">当直表メーカーへようこそ</h3>
+    <p style="margin:0 0 22px;font-size:13px;color:#64748b;line-height:1.7;">最初の登録方法を選んでください。<br>途中でも切り替えられます。</p>
+    <button onclick="onWelcomeImport()" style="display:block;width:100%;padding:14px;font-size:15px;font-weight:700;margin-bottom:10px;background:#2563eb;color:#fff;border:none;border-radius:10px;cursor:pointer;box-shadow:0 1px 2px rgba(37,99,235,.2);">📥 Excel/CSVから取り込む</button>
+    <button onclick="onWelcomeManual()" style="display:block;width:100%;padding:12px;font-size:14px;font-weight:600;background:#fff;color:#475569;border:1px solid #cbd5e1;border-radius:10px;cursor:pointer;">✏️ 手入力で始める</button>
+    <div style="margin-top:16px;font-size:11px;color:#94a3b8;line-height:1.6;">既存の当直表があれば Excel 取込が便利です。<br>担当者名と外勤先名を自動で抽出します。</div>
+  </div>
 </div>
 
 <!-- Excel取込 モーダル(全プラン共通) -->
