@@ -3910,15 +3910,17 @@ async function handleExcelImportFile(ev) {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array' });
     const allCells = [];
+    const sheets = []; // 2次元配列の配列 (ヘッダー行検出用)
     wb.SheetNames.forEach(sn => {
       const sheet = wb.Sheets[sn];
       const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      sheets.push(data);
       data.forEach(row => row.forEach(cell => {
         const s = String(cell || '').trim();
         if (s) allCells.push(s);
       }));
     });
-    const { names: candNames, clinics: candClinics } = _extractImportCandidates(allCells);
+    const { names: candNames, clinics: candClinics } = _extractImportCandidates(allCells, sheets);
     _importPending = { names: candNames, clinics: candClinics };
     _renderImportCandidates();
   } catch (e) {
@@ -3927,8 +3929,36 @@ async function handleExcelImportFile(ev) {
   }
 }
 
+// ヘッダー行から拾う外勤先候補のNG判定 (一般用語・日付・記号を除外)
+const _IMPORT_HEADER_NG = new Set([
+  '氏名','担当','医師','勤務','勤務医','名前','スタッフ','人数','回数','合計','計',
+  '当直','日直','外勤','副直','オンコール','待機','備考','区分','部署','診療科',
+  '月','火','水','木','金','土','日','曜日','平日','休日','土日','祝日','祝',
+  '勤務日','勤務帯','勤務先','勤務時間','回復時間',
+  '日付','年月日','時間','期間','種別','番号','No','no','#',
+  '小計','総計','Total','total','名','医員','人','研修医','専攻医','指導医','部長','医局長',
+  '予定','希望','確定','仮','例','備考欄','日勤','夜勤','早出','遅出'
+]);
+const _IMPORT_HEADER_NG_REGEX = [
+  /^[0-9０-９\s\-:：\/年月日時分秒\.\(\)（）]+$/, // 数字・日付・時刻・記号のみ
+  /^(月|火|水|木|金|土|日)曜?$/,                // 曜日
+  /^[0-9]{1,2}月[0-9]{0,2}日?$/,                 // 1月、4月1日 など
+  /^[0-9]{4}\/?年?$/,                             // 2026 / 2026年
+  /^[\s○◯×✕△□■●○◎\-_=]+$/,                  // 記号のみ
+  /^.{1}$/                                         // 1文字以下
+];
+function _looksLikeHeaderClinic(s) {
+  if (s.length < 2 || s.length > 25) return false;
+  if (_IMPORT_HEADER_NG.has(s)) return false;
+  for (const r of _IMPORT_HEADER_NG_REGEX) if (r.test(s)) return false;
+  // 半角英数のみで短いもの (ID等) は除外
+  if (/^[A-Za-z0-9_\-]+$/.test(s) && s.length < 5) return false;
+  return true;
+}
+
 // ヒューリスティック抽出: 全セル文字列から担当者名・外勤先名候補を返す
-function _extractImportCandidates(cells) {
+// sheets: 2次元配列の配列 (ヘッダー行検出に使用)
+function _extractImportCandidates(cells, sheets) {
   // 重み付け: 出現回数が多いもの優先
   const nameMap = new Map();
   const clinicMap = new Map();
@@ -3981,10 +4011,10 @@ function _extractImportCandidates(cells) {
     return false;
   };
 
+  // 1) 末尾キーワード一致は強い外勤先候補。担当者候補も並行して拾う(重複OK)。
   cells.forEach(cell => {
     if (looksLikeClinic(cell)) {
-      clinicMap.set(cell, (clinicMap.get(cell) || 0) + 1);
-      return;
+      clinicMap.set(cell, (clinicMap.get(cell) || 0) + 10); // 強い候補は重み大きく
     }
     const n = looksLikeName(cell);
     if (n) {
@@ -3992,8 +4022,25 @@ function _extractImportCandidates(cells) {
     }
   });
 
-  // ノイズ削減: 1回しか出現しない名前で、かつ "<姓>" 単独 (1文字+1文字でも普通の単語) は除外しない
-  // ここではシンプルに全部含めて UI で外してもらう
+  // 2) 各シートの先頭数行をヘッダー行とみなし、外勤先候補に追加 (語尾省略にも対応)
+  if (Array.isArray(sheets)) {
+    sheets.forEach(rows => {
+      if (!rows || !rows.length) return;
+      const HEADER_ROWS = Math.min(6, rows.length);
+      for (let r = 0; r < HEADER_ROWS; r++) {
+        const row = rows[r] || [];
+        const nonEmpty = row.filter(c => String(c||'').trim()).length;
+        if (nonEmpty < 3) continue; // 横並び3つ以上ある行をヘッダー候補とみなす
+        row.forEach(cell => {
+          const s = String(cell || '').trim();
+          if (!s) return;
+          if (_looksLikeHeaderClinic(s)) {
+            clinicMap.set(s, (clinicMap.get(s) || 0) + 1);
+          }
+        });
+      }
+    });
+  }
 
   // 出現回数が多い順、同数なら最初に見つかった順 (Map は挿入順を保つ)
   const sortByCount = (a, b) => b[1] - a[1];
