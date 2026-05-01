@@ -1252,6 +1252,16 @@
 
     /* ヘルプ・ステップ表示等 */
     .legend, .duty-label { font-size: 13px !important; }
+
+    /* ===== 文字サイズ 3段階 (タイトルバーのトグルで切替) ===== */
+    /* 小: +10% / 中: +20% (デフォルト) / 大: +30% */
+    html[data-fz="sm"] body { zoom: 1.10; }
+    html[data-fz="md"] body { zoom: 1.20; }
+    html[data-fz="lg"] body { zoom: 1.30; }
+    /* トグル選択中のスタイル */
+    #font-zoom-toggle .fz-btn.active {
+      background: #2563eb !important; color: #fff !important;
+    }
   </style>
 </head>
 <body>
@@ -1303,6 +1313,11 @@
   <span id="plan-badge" class="plan-badge plan-free" onclick="onPlanBadgeClick()" title="プラン管理">
     <span class="plan-icon" id="plan-badge-icon">🆓</span>
     <span id="plan-badge-label">無料</span>
+  </span>
+  <span id="font-zoom-toggle" title="文字サイズ切替" style="display:inline-flex;gap:0;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;margin-left:8px;">
+    <button type="button" class="fz-btn" data-fz="sm" onclick="setFontZoom('sm')" title="小" style="border:none;background:#fff;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;color:#475569;">小</button>
+    <button type="button" class="fz-btn" data-fz="md" onclick="setFontZoom('md')" title="中" style="border:none;border-left:1px solid #e2e8f0;background:#fff;padding:5px 10px;cursor:pointer;font-size:14px;font-weight:700;color:#475569;">中</button>
+    <button type="button" class="fz-btn" data-fz="lg" onclick="setFontZoom('lg')" title="大" style="border:none;border-left:1px solid #e2e8f0;background:#fff;padding:5px 10px;cursor:pointer;font-size:16px;font-weight:700;color:#475569;">大</button>
   </span>
   <span id="user-badge-wrap" style="display:none;">
     <span id="user-badge" onclick="toggleUserMenu(event)" title="メニューを開く">
@@ -5685,6 +5700,28 @@ async function openBillingPortal() {
 // プラン判定ヘルパー(他の機能ガードで使う)
 function isLightOrAbove() { return _plan === 'light' || _plan === 'pro'; }
 function isProPlan()      { return _plan === 'pro'; }
+
+// ===== 文字サイズ 3段階トグル (小=sm / 中=md / 大=lg) =====
+const FONT_ZOOM_KEY = 'tochoku_fz';
+function setFontZoom(z) {
+  if (!['sm','md','lg'].includes(z)) z = 'sm';
+  document.documentElement.dataset.fz = z;
+  try { localStorage.setItem(FONT_ZOOM_KEY, z); } catch (e) {}
+  document.querySelectorAll('#font-zoom-toggle .fz-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.fz === z);
+  });
+}
+function _initFontZoom() {
+  let z = 'md';
+  try { z = localStorage.getItem(FONT_ZOOM_KEY) || 'md'; } catch (e) {}
+  setFontZoom(z);
+}
+// DOMContentLoaded 前に呼ばれる可能性もあるので safe guard
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _initFontZoom);
+} else {
+  _initFontZoom();
+}
 
 // =============================================================
 // 振り分け条件 詳細設定モーダル(ライト以上)
