@@ -1345,9 +1345,9 @@
 <!-- ゲストモード時のお知らせバナー -->
 <div id="guest-banner">
   <span class="gb-msg">
-    <strong>お試し中</strong>:データは保存されません。ページを閉じる/リロードすると消えます。会員登録すれば自動保存・別端末からも閲覧できます。
+    <strong>お試し中</strong>:データは保存されません(リロードで消えます)。ライトプラン<strong style="color:#059669;">30日間無料</strong>で全機能を試せます。
   </span>
-  <button class="gb-cta" onclick="openSignIn()">会員登録</button>
+  <button class="gb-cta" onclick="openSignIn()">30日無料で試す</button>
   <button class="gb-close" onclick="hideGuestBanner()" title="閉じる">×</button>
 </div>
 <div id="main">
@@ -4490,28 +4490,17 @@ let _saveTimer = null;        // 保存デバウンスタイマー
 let _isApplyingState = false; // 状態復元中の二重保存防止
 
 // 名前データ + 状態データを1つのJSONに固める
+// 認証ユーザー(ライト/トライアル中)は常にフルデータ保存。ゲストは _persist() でスキップ。
 function _buildStateBlob() {
-  // 共通: マスタ + 日付範囲 + 振り分け条件
   const blob = {
     groups, names, nameGroups, nameOutsides,
     cols: COLS, colBand, bikoData, recoveryData, workPatterns, dayModes,
-    currentDates, assignmentRules
+    currentDates, assignmentRules,
+    gridData, slotData, dutyOpen, preAssigned, splitDays,
+    dutyOpenNichoku, slotDataNichoku, gakkaiData, holidayDates
   };
-  // 【ライト以上】途中作業の全データを保存して、別端末/翌日でも完全復帰
-  if (isLightOrAbove()) {
-    blob.gridData         = gridData;
-    blob.slotData         = slotData;
-    blob.dutyOpen         = dutyOpen;
-    blob.preAssigned      = preAssigned;
-    blob.splitDays        = splitDays;
-    blob.dutyOpenNichoku  = dutyOpenNichoku;
-    blob.slotDataNichoku  = slotDataNichoku;
-    blob.gakkaiData       = gakkaiData;
-    blob.holidayDates     = holidayDates;
-    if (storedRoster) {
-      // dt は Date オブジェクトなので保存時はシリアライズ可能な形に
-      blob.roster = storedRoster.map(({ dt, ...rest }) => rest);
-    }
+  if (storedRoster) {
+    blob.roster = storedRoster.map(({ dt, ...rest }) => rest);
   }
   return blob;
 }
@@ -6635,26 +6624,25 @@ async function _waitForClerk() {
   <div class="um-card">
     <button class="um-close" onclick="closeUpgradeModal()" title="閉じる">×</button>
     <div class="um-icon" aria-hidden="true">⚡</div>
-    <div class="um-title">ライトプランで快適に</div>
-    <div class="um-price"><strong>月 300円</strong>(税込)</div>
+    <div class="um-title">ライトプランで全機能を使う</div>
+    <div class="um-price"><strong>月 300円</strong>(税込)・<strong style="color:#059669;">30日間無料</strong></div>
     <ul class="um-perks">
-      <li>Excel出力時の30秒広告を非表示</li>
-      <li>戻る/やり直し 無制限</li>
-      <li>セル間ドラッグ&ドロップで割当変更</li>
-      <li>重複・矛盾の赤色警告表示</li>
-      <li>途中作業を全部自動保存(中断地点から復帰)</li>
+      <li>担当者・外勤先・当直表すべて自動保存(別端末からも閲覧・編集)</li>
       <li>過去当直表の月別アーカイブ</li>
       <li>振り分け条件詳細設定(外勤先の永続固定・ペア・先月考慮 など)</li>
-      <li>回復時間のカスタマイズ</li>
+      <li>次回勤務許可時間のカスタマイズ</li>
+      <li>セル間ドラッグ&ドロップで割当変更</li>
+      <li>戻る/やり直し 無制限</li>
+      <li>Excel出力時の30秒広告を非表示</li>
     </ul>
     <button id="um-cta-primary" class="um-cta-primary" onclick="startUpgradeCheckout()">
-      ライトプランに申し込む
+      30日間無料で試す
     </button>
     <button class="um-cta-secondary" onclick="closeUpgradeModal()">
       あとで
     </button>
     <div class="um-foot">
-      解約はいつでも可能。Stripeの請求ポータルから手続きできます。
+      30日後から月¥300の課金開始。トライアル中はいつでも解約可。<br>解約はStripeの請求ポータルから手続きできます。
     </div>
   </div>
 </div>
@@ -6664,18 +6652,19 @@ async function _waitForClerk() {
   <div class="spm-card">
     <button class="spm-close" onclick="closeSignupPromptModal()" title="閉じる">×</button>
     <div class="spm-icon" aria-hidden="true">当</div>
-    <div class="spm-title">無料会員登録でExcelダウンロード</div>
+    <div class="spm-title">30日間無料でフル機能を使う</div>
     <div class="spm-body">
-      <strong>お試しモード</strong>では、Excel出力ができません。<br>
-      無料会員登録すると、以下が利用できます。
+      <strong>お試しモード</strong>ではExcel出力ができません。<br>
+      Googleで会員登録 → ライトプランを<strong>30日間無料</strong>で試せます。
     </div>
     <ul class="spm-perks">
       <li>Excel(.xlsx)へのダウンロード</li>
       <li>データを別の端末からも閲覧・編集</li>
-      <li>ブラウザを変えてもデータが消えない</li>
+      <li>過去当直表アーカイブ・振り分け条件詳細設定</li>
+      <li>30日以内に解約すれば一切課金なし</li>
     </ul>
     <button class="spm-cta-primary" onclick="closeSignupPromptModal();openSignIn();">
-      Googleで会員登録(無料)
+      Googleで会員登録 → 30日無料で試す
     </button>
     <button class="spm-cta-secondary" onclick="closeSignupPromptModal();">
       あとで(プレビューに戻る)
