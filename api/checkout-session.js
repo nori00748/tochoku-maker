@@ -79,7 +79,9 @@ export default async function handler(req, res) {
       client_reference_id: userId,
       metadata: { clerk_user_id: userId },
       subscription_data: {
-        metadata: { clerk_user_id: userId }
+        metadata: { clerk_user_id: userId },
+        // 30日間無料トライアル: トライアル期間中は課金なし、解約すれば一切請求発生せず
+        trial_period_days: 30
       },
       // 同一ユーザーが過去に作成済みなら同じ Customer を使う
       ...(existingCustomerId ? { customer: existingCustomerId } : (userEmail ? { customer_email: userEmail } : {})),
