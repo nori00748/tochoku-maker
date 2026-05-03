@@ -1028,7 +1028,7 @@
     }
     .t-anim { width: 100%; }
 
-    /* ===== 【無料プラン】Excel出力前の30秒広告モーダル ===== */
+    /* ===== 【レガシー】Excel出力前の30秒広告モーダル(現在は未使用: ゲストはExcel不可、ライトは広告なし) ===== */
     #ad-modal {
       display: none; position: fixed; inset: 0; z-index: 9999;
       background: rgba(15, 23, 42, .72); align-items: center; justify-content: center;
@@ -1276,8 +1276,8 @@
         <span class="auth-loading"></span>読み込み中…
       </span>
       <span id="auth-prompt-text" style="display:none;">
-        無料会員登録(Googleアカウント)で<br>
-        当直表のデータが安全に保存されます。
+        Googleで会員登録 → ライトプラン<strong style="color:#059669;">30日間無料</strong>で<br>
+        担当者・外勤先・当直表すべてサーバー保存。
       </span>
     </div>
     <div id="auth-buttons" style="display:none;">
@@ -3565,7 +3565,7 @@ function renderRosterFromStored() {
       if (conflict(name)) return ' cell-conflict';
       return '';
     };
-    // 【無料プラン】セル間の医師移動は不可。ドロップ(名前タグからの割当)は許可。
+    // 【ゲスト】セル間の医師移動は不可。ドロップ(名前タグからの割当)は許可。
     // 【ライト以上】セル間ドラッグで医師の入れ替えが可能。
     const draggableAttrs = (name, type, ci='') => {
       if (!isLightOrAbove()) return '';
@@ -3845,7 +3845,7 @@ function exportExcel() {
   }
 }
 
-// 【無料プラン】30秒広告モーダルを表示 → カウント完了後にコールバック実行
+// 【レガシー】30秒広告モーダルを表示 → カウント完了後にコールバック実行 (現在は未使用)
 function showAdModalThenDownload(onComplete) {
   const modal = document.getElementById('ad-modal');
   const cdEl  = document.getElementById('ad-countdown');
@@ -6625,7 +6625,7 @@ async function _waitForClerk() {
     <button class="um-close" onclick="closeUpgradeModal()" title="閉じる">×</button>
     <div class="um-icon" aria-hidden="true">⚡</div>
     <div class="um-title">ライトプランで全機能を使う</div>
-    <div class="um-price"><strong>月 300円</strong>(税込)・<strong style="color:#059669;">30日間無料</strong></div>
+    <div class="um-price"><strong>月 500円</strong>(税込)・<strong style="color:#059669;">30日間無料</strong></div>
     <ul class="um-perks">
       <li>担当者・外勤先・当直表すべて自動保存(別端末からも閲覧・編集)</li>
       <li>過去当直表の月別アーカイブ</li>
@@ -6642,7 +6642,7 @@ async function _waitForClerk() {
       あとで
     </button>
     <div class="um-foot">
-      30日後から月¥300の課金開始。トライアル中はいつでも解約可。<br>解約はStripeの請求ポータルから手続きできます。
+      30日後から月¥500の課金開始。トライアル中はいつでも解約可。<br>解約はStripeの請求ポータルから手続きできます。
     </div>
   </div>
 </div>
@@ -6672,7 +6672,7 @@ async function _waitForClerk() {
   </div>
 </div>
 
-<!-- 【無料プラン】Excel出力前の30秒広告モーダル -->
+<!-- 【レガシー】Excel出力前の30秒広告モーダル(現在は未使用) -->
 <div id="ad-modal" role="dialog" aria-modal="true">
   <div id="ad-modal-inner">
     <div id="ad-modal-header">
@@ -6685,13 +6685,12 @@ async function _waitForClerk() {
           広告枠
         </div>
         <div style="font-size:12px;line-height:1.6;">
-          ここに広告が表示されます<br>
-          (無料プランでは Excel 出力前に 30 秒の広告が入ります)
+          ここに広告が表示されます
         </div>
       </div>
     </div>
     <div id="ad-progress-wrap"><div id="ad-progress"></div></div>
-    <div id="ad-modal-footer">無料会員登録でデータがクラウド保存されます(開発中)</div>
+    <div id="ad-modal-footer">ライトプラン(30日間無料)なら広告なしで即ダウンロードできます</div>
   </div>
 </div>
 
