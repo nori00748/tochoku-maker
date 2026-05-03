@@ -1028,7 +1028,7 @@
     }
     .t-anim { width: 100%; }
 
-    /* ===== 【レガシー】Excel出力前の30秒広告モーダル(現在は未使用: ゲストはExcel不可、ライトは広告なし) ===== */
+    /* ===== Excel出力前の30秒広告モーダル(ゲスト用。ライト以上はスキップ) ===== */
     #ad-modal {
       display: none; position: fixed; inset: 0; z-index: 9999;
       background: rgba(15, 23, 42, .72); align-items: center; justify-content: center;
@@ -3717,11 +3717,7 @@ function renderSummary() {
 
 function exportExcel() {
   if (!names.length||!currentDates.length) return;
-  // ゲストモードの場合は会員登録誘導ポップアップを出して終了(実ダウンロードしない)
-  if (_mode === 'guest') {
-    showSignupPromptModal();
-    return;
-  }
+  // ゲストモードでも Excel 出力可。30秒広告を挟んでからダウンロード(下の分岐で処理)。
   const data = storedRoster || computeRoster();
   if (!data) return;
   const firstDt = data[0].dt;
@@ -3845,7 +3841,7 @@ function exportExcel() {
   }
 }
 
-// 【レガシー】30秒広告モーダルを表示 → カウント完了後にコールバック実行 (現在は未使用)
+// 30秒広告モーダルを表示 → カウント完了後にコールバック実行 (ゲストの Excel 出力で使用)
 function showAdModalThenDownload(onComplete) {
   const modal = document.getElementById('ad-modal');
   const cdEl  = document.getElementById('ad-countdown');
@@ -6654,8 +6650,8 @@ async function _waitForClerk() {
     <div class="spm-icon" aria-hidden="true">当</div>
     <div class="spm-title">30日間無料でフル機能を使う</div>
     <div class="spm-body">
-      <strong>お試しモード</strong>ではExcel出力ができません。<br>
-      Googleで会員登録 → ライトプランを<strong>30日間無料</strong>で試せます。
+      <strong>お試しモード</strong>のExcel出力は30秒の広告視聴後にダウンロードできます。<br>
+      Googleで会員登録 → ライトプランを<strong>30日間無料</strong>で試せば、広告なし＆データ保存もできます。
     </div>
     <ul class="spm-perks">
       <li>Excel(.xlsx)へのダウンロード</li>
@@ -6672,7 +6668,7 @@ async function _waitForClerk() {
   </div>
 </div>
 
-<!-- 【レガシー】Excel出力前の30秒広告モーダル(現在は未使用) -->
+<!-- Excel出力前の30秒広告モーダル(ゲスト用。ライト以上はスキップ) -->
 <div id="ad-modal" role="dialog" aria-modal="true">
   <div id="ad-modal-inner">
     <div id="ad-modal-header">
