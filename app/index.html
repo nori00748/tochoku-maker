@@ -2031,46 +2031,55 @@ function toggleColBand(ci) {
 }
 
 // ===== 勤務時間プルダウン (タイムテーブル連動用) =====
+// 30分刻みで 0:00 〜 23:30 の 48 個 + 24:00 (翌日扱い)
+const _TIME_OPTS = (() => {
+  const arr = [];
+  for (let h = 0; h < 24; h++) for (const m of [0, 30]) arr.push({ min: h*60+m, label: `${h}:${String(m).padStart(2,'0')}` });
+  arr.push({ min: 24*60, label: '24:00' });
+  return arr;
+})();
+// 時刻文字列 ("9:00-17:00" など) を {startMin, endMin} にパース。end <= start なら翌日扱い。
+function _parseTimeRange(s) {
+  const m = String(s||'').match(/(\d{1,2})[:時](\d{2})\s*[-〜~]\s*(\d{1,2})[:時](\d{2})/);
+  if (!m) return null;
+  let startMin = +m[1]*60 + +m[2];
+  let endMin   = +m[3]*60 + +m[4];
+  if (endMin <= startMin) endMin += 24*60;
+  return { startMin, endMin };
+}
+const _fmtMin = (m) => `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`;
 // ci = -1 の時は当直列 (COLS[0])。それ以外は外勤列 (COLS[ci+1])
 function _bikoSelectHtml(label, ci) {
   const cur = bikoData[label] || '';
-  // 4種の標準勤務帯のうちどれに該当するか判定 (時間文字列の正規化マッチ)
-  const stdBands = ['外来','日直','当直','日当直'];
-  // ci===-1 (当直列) は colBand を持たないが、bikoData の時刻文字列で判定
-  let matched = '';
-  if (ci >= 0 && colBand[ci]) {
-    matched = colBand[ci];
-  } else {
-    matched = stdBands.find(b => BAND_DEFAULTS[b].time === cur) || '';
-  }
-  const isCustom = !matched && cur;
-  const opts = stdBands.map(b => {
-    const t = BAND_DEFAULTS[b].time;
-    return `<option value="${b}" ${matched===b?'selected':''}>${b} (${t})</option>`;
-  }).join('');
-  const customLabel = isCustom ? `カスタム (${esc(cur)})` : 'カスタム…';
-  const customOpt = `<option value="__custom__" ${isCustom?'selected':''}>${customLabel}</option>`;
-  return `<select class="biko-select" onchange="setBikoBand('${escQ(label)}',${ci},this.value)" style="width:100%;padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;font-size:12px;background:#fff;">
-    ${opts}${customOpt}
-  </select>`;
+  const range = _parseTimeRange(cur);
+  // デフォルトは「外来」相当 (9:00-12:00)
+  const startMin = range ? (range.startMin % (24*60)) : 9*60;
+  const endMin   = range ? (range.endMin   - (range.endMin > 24*60 ? 24*60 : 0)) : 12*60;
+  const opts = (selMin) => _TIME_OPTS.map(o => `<option value="${o.min}" ${o.min===selMin?'selected':''}>${o.label}</option>`).join('');
+  return `<div style="display:flex;align-items:center;gap:2px;justify-content:center;flex-wrap:nowrap;">
+    <select onchange="setBikoTime('${escQ(label)}',${ci},'start',this.value)" style="padding:3px 4px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;background:#fff;">${opts(startMin)}</select>
+    <span style="font-size:10px;color:#94a3b8;">-</span>
+    <select onchange="setBikoTime('${escQ(label)}',${ci},'end',this.value)" style="padding:3px 4px;border:1px solid #cbd5e1;border-radius:4px;font-size:11px;background:#fff;">${opts(endMin)}</select>
+  </div>`;
 }
-// 勤務帯プルダウンの選択ハンドラ
-function setBikoBand(label, ci, val) {
-  if (val === '__custom__') {
-    const input = prompt('勤務時間を入力してください (例: 9:00-12:00)', bikoData[label] || '');
-    if (input != null) {
-      bikoData[label] = input.trim();
-      // colBand はクリア (カスタム時は標準帯に該当しない)
-      if (ci >= 0) delete colBand[ci];
+// 開始時刻 / 終了時刻のプルダウン onchange
+function setBikoTime(label, ci, which, valStr) {
+  const val = parseInt(valStr);
+  const range = _parseTimeRange(bikoData[label] || '') || { startMin: 9*60, endMin: 12*60 };
+  let startMin = range.startMin % (24*60);
+  let endMin   = range.endMin   - (range.endMin > 24*60 ? 24*60 : 0);
+  if (which === 'start') startMin = val;
+  else                   endMin   = val;
+  bikoData[label] = `${_fmtMin(startMin)}-${_fmtMin(endMin === 24*60 ? 0 : endMin)}`;
+  // 標準帯 4 種のいずれかに一致したら colBand & recoveryData を連動
+  if (ci >= 0) {
+    const stdBands = ['外来','日直','当直','日当直'];
+    const matched = stdBands.find(b => BAND_DEFAULTS[b].time === bikoData[label]);
+    if (matched) {
+      colBand[ci] = matched;
+      recoveryData[label] = BAND_DEFAULTS[matched].recovery;
     } else {
-      // キャンセル: 何もしない (UI 再描画で元に戻る)
-    }
-  } else {
-    const def = BAND_DEFAULTS[val];
-    if (def) {
-      bikoData[label] = def.time;
-      recoveryData[label] = def.recovery;
-      if (ci >= 0) colBand[ci] = val;
+      delete colBand[ci];
     }
   }
   saveState();
@@ -4520,86 +4529,123 @@ function _renderPreviewNameWeek(data) {
   `;
 }
 
-// View 4: タイムテーブル (週ごと) — 縦=時刻スロット、横=曜日、各セルに勤務者+列名
-const _TT_SLOTS = [
-  { id: 'morning', label: '9:00-12:00',  sub: '午前',   bands: ['外来','日直','日当直'] },
-  { id: 'day',     label: '12:00-17:00', sub: '日中',   bands: ['日直','日当直'] },
-  { id: 'night',   label: '17:00-翌9:00', sub: '夜間',   bands: ['当直','日当直'] }
-];
-function _collectWorkersAt(row, slotBands) {
-  // duty/nichoku/clinics/clinicsNichoku を見て、その slot に該当する勤務者を集める
-  const result = [];
-  const seen = new Set();
-  const push = (name, label, kind) => {
-    if (!name) return;
-    const key = name + '|' + label;
-    if (seen.has(key)) return;
-    seen.add(key);
-    result.push({ name, label, kind });
+// View 4: タイムテーブル (週ごと) — 担当者×日付。各セル内に 0-24h 横バーで勤務時間を視覚化
+const _TT_KIND_BG = { duty:'#ede9fe', nichoku:'#fef9c3', oncall:'#fce7f3', subduty:'#dcfce7', clinic:'#dbeafe' };
+const _TT_KIND_FG = { duty:'#6d28d9', nichoku:'#a16207', oncall:'#be185d', subduty:'#15803d', clinic:'#1d4ed8' };
+// 列ラベル / ci から勤務時間レンジを取得 (bikoData → colBand → null)
+function _getColTimeRange(colLabel, ci) {
+  const r = _parseTimeRange(bikoData[colLabel] || '');
+  if (r) return r;
+  const band = ci >= 0 ? colBand[ci] : '当直'; // ci=-1 は当直列
+  if (band && BAND_DEFAULTS[band]) {
+    const def = BAND_DEFAULTS[band];
+    return { startMin: def.startMin, endMin: def.endMin };
+  }
+  return null;
+}
+// 担当者 name の day d 当該日の勤務セグメントを集める (前日からの繰り越しも含む)
+function _collectSegmentsForNameDay(name, row, dataByDate) {
+  const segs = [];
+  const push = (label, kind, range, fromYesterday) => {
+    if (!range) return;
+    let s = fromYesterday ? 0 : range.startMin;
+    let e = fromYesterday ? range.endMin - 24*60 : range.endMin;
+    if (e <= 0) return;
+    if (s >= 24*60) return;
+    s = Math.max(0, s);
+    e = Math.min(24*60, e);
+    if (e <= s) return;
+    segs.push({ label, kind, startMin: s, endMin: e, fromYesterday: !!fromYesterday });
   };
-  // 当直 (列0)
-  if (slotBands.includes('当直')) push(row.duty,    '当直', 'duty');
-  if (slotBands.includes('日直')) push(row.nichoku, '日直', 'nichoku');
-  // clinics
-  Object.entries(row.clinics || {}).forEach(([ci, n]) => {
-    const idx = Number(ci);
-    const col = COLS[idx + 1];
-    if (!col) return;
-    const band = colBand[idx] || ((col.isOnCall || col.isSubduty) ? '当直' : '');
-    if (!band) return;
-    if (slotBands.includes(band)) {
+  const visit = (theRow, fromYesterday) => {
+    if (!theRow) return;
+    if (theRow.duty === name) push('当直', 'duty', _getColTimeRange(COLS[0].label, -1), fromYesterday);
+    if (theRow.nichoku === name) push('日直', 'nichoku', { startMin: 9*60, endMin: 17*60 }, fromYesterday);
+    Object.entries(theRow.clinics || {}).forEach(([ci, n]) => {
+      if (n !== name) return;
+      const idx = Number(ci);
+      const col = COLS[idx + 1];
+      if (!col) return;
+      const range = _getColTimeRange(col.label, idx);
       const kind = col.isOnCall ? 'oncall' : col.isSubduty ? 'subduty' : 'clinic';
-      push(n, col.label, kind);
-    }
-  });
-  // clinicsNichoku (オンコール/副直の日直分割)
-  Object.entries(row.clinicsNichoku || {}).forEach(([ci, n]) => {
-    const idx = Number(ci);
-    const col = COLS[idx + 1];
-    if (!col) return;
-    if (slotBands.includes('日直')) {
+      push(col.label, kind, range, fromYesterday);
+    });
+    Object.entries(theRow.clinicsNichoku || {}).forEach(([ci, n]) => {
+      if (n !== name) return;
+      const idx = Number(ci);
+      const col = COLS[idx + 1];
+      if (!col) return;
       const kind = col.isOnCall ? 'oncall' : col.isSubduty ? 'subduty' : 'clinic';
-      push(n, col.label + '(日)', kind);
-    }
-  });
-  return result;
+      push(col.label + '(日)', kind, { startMin: 9*60, endMin: 17*60 }, fromYesterday);
+    });
+  };
+  visit(row, false);
+  // 前日からの繰り越し (当直など翌日にまたがる勤務の続きを「明け」として表示)
+  const dt = row.dt || new Date(row.d+'T00:00:00');
+  const prev = new Date(dt); prev.setDate(prev.getDate() - 1);
+  const prevKey = prev.toISOString().slice(0,10);
+  visit(dataByDate[prevKey], true);
+  return segs;
 }
 function _renderPreviewWeekTimetable(data) {
+  const orderedNames = (typeof getOrderedNames === 'function') ? getOrderedNames() : names;
   const weeks = _datesByCalendarWeek(data);
-  const KIND_BG = { duty:'#ede9fe', nichoku:'#fef9c3', oncall:'#fce7f3', subduty:'#dcfce7', clinic:'#dbeafe' };
-  const KIND_FG = { duty:'#6d28d9', nichoku:'#a16207', oncall:'#be185d', subduty:'#15803d', clinic:'#1d4ed8' };
+  const dataByDate = {};
+  data.forEach(r => { dataByDate[r.d] = r; });
+  // 24h スケールの目盛りオーバーレイ (0/6/12/18/24 の縦線)
+  const tickHtml = `<div style="position:absolute;inset:0;pointer-events:none;">
+    ${[6,12,18].map(h => `<div style="position:absolute;top:0;bottom:0;left:${(h/24*100).toFixed(2)}%;border-left:1px dashed #e2e8f0;"></div>`).join('')}
+  </div>`;
   const tables = weeks.map((wk, wi) => {
-    // 日付ヘッダー
     const headerCells = wk.items.map((row, w) => {
-      if (!row) return `<th style="background:#f1f5f9;color:#cbd5e1;min-width:120px;font-size:14px;">${WD[w]}</th>`;
+      if (!row) return `<th style="background:#f1f5f9;color:#cbd5e1;min-width:140px;font-size:13px;">${WD[w]}</th>`;
       const isSat = w===6, isSun = w===0, isHol = !!holidayDates[row.d];
       let bg = '';
       if      (isHol) bg = '#fce4ec';
       else if (isSat) bg = '#daeef3';
       else if (isSun) bg = '#fde9d9';
-      return `<th style="background:${bg};min-width:120px;font-size:14px;">${row.dt.getDate()}<br><span style="font-weight:400;color:#64748b;font-size:12px;">${WD[w]}</span></th>`;
+      return `<th style="background:${bg};min-width:140px;font-size:13px;">
+        <div>${row.dt.getDate()} <span style="font-weight:400;color:#64748b;font-size:11px;">${WD[w]}</span></div>
+        <div style="position:relative;height:10px;margin-top:3px;font-size:8px;color:#94a3b8;font-weight:400;">
+          <span style="position:absolute;left:0;">0</span>
+          <span style="position:absolute;left:25%;transform:translateX(-50%);">6</span>
+          <span style="position:absolute;left:50%;transform:translateX(-50%);">12</span>
+          <span style="position:absolute;left:75%;transform:translateX(-50%);">18</span>
+          <span style="position:absolute;right:0;">24</span>
+        </div>
+      </th>`;
     }).join('');
-    // 各時刻スロット行
-    const slotRows = _TT_SLOTS.map(slot => {
+    const rows = orderedNames.map(name => {
       const tds = wk.items.map((row, w) => {
         if (!row) return `<td style="background:#fafafa;"></td>`;
-        const workers = _collectWorkersAt(row, slot.bands);
         const isSat = w===6, isSun = w===0, isHol = !!holidayDates[row.d];
         let cellBg = '#fff';
         if      (isHol) cellBg = '#fef2f5';
         else if (isSat) cellBg = '#f0f7fa';
         else if (isSun) cellBg = '#fdf3ec';
-        const chips = workers.map(wkr => `
-          <div style="display:inline-block;background:${KIND_BG[wkr.kind]||'#f1f5f9'};color:${KIND_FG[wkr.kind]||'#475569'};
-            border-radius:6px;padding:3px 8px;margin:2px 3px 2px 0;font-size:13px;font-weight:600;line-height:1.4;">
-            <span style="font-size:10px;font-weight:500;opacity:.85;">${esc(wkr.label)}</span>
-            <br>${esc(wkr.name)}
-          </div>`).join('');
-        return `<td style="background:${cellBg};vertical-align:top;padding:8px 6px;min-height:60px;">${chips || '<span style="color:#cbd5e1;font-size:11px;">—</span>'}</td>`;
+        const segs = _collectSegmentsForNameDay(name, row, dataByDate);
+        if (!segs.length) {
+          return `<td style="background:${cellBg};padding:6px 4px;vertical-align:middle;">
+            <div style="position:relative;height:18px;background:#f8fafc;border-radius:3px;">${tickHtml}</div>
+          </td>`;
+        }
+        const bars = segs.map(seg => {
+          const left  = (seg.startMin / (24*60) * 100).toFixed(2);
+          const width = ((seg.endMin - seg.startMin) / (24*60) * 100).toFixed(2);
+          const bg = _TT_KIND_BG[seg.kind] || '#dbeafe';
+          const fg = _TT_KIND_FG[seg.kind] || '#1d4ed8';
+          const labelTxt = seg.fromYesterday ? `${seg.label}(明け)` : seg.label;
+          return `<div style="position:relative;width:100%;height:18px;background:#f8fafc;border-radius:3px;">${tickHtml}
+            <div style="position:absolute;top:0;left:${left}%;width:${width}%;height:100%;background:${bg};color:${fg};
+              border-radius:3px;padding:0 4px;font-size:10px;font-weight:700;display:flex;align-items:center;overflow:hidden;
+              white-space:nowrap;text-overflow:ellipsis;line-height:1;${seg.fromYesterday?'opacity:.7;':''}" title="${esc(labelTxt)} ${_fmtMin(seg.startMin)}-${_fmtMin(seg.endMin)}">${esc(labelTxt)}</div>
+          </div>`;
+        }).join('<div style="height:2px;"></div>');
+        return `<td style="background:${cellBg};padding:6px 4px;vertical-align:middle;">${bars}</td>`;
       }).join('');
       return `<tr>
-        <th style="background:#f8fafc;text-align:right;padding:8px 12px;font-size:12px;color:#475569;font-weight:700;white-space:nowrap;min-width:90px;">
-          ${slot.label}<br><span style="font-weight:500;color:#94a3b8;font-size:11px;">${slot.sub}</span>
+        <th style="background:#f8fafc;text-align:left;padding:6px 12px;font-size:13px;color:#1e293b;font-weight:700;white-space:nowrap;min-width:90px;">
+          ${esc(name)}
         </th>
         ${tds}
       </tr>`;
@@ -4611,19 +4657,26 @@ function _renderPreviewWeekTimetable(data) {
     return `
       <div style="margin-bottom:28px;">
         <div style="font-weight:700;color:#0f172a;margin-bottom:8px;font-size:16px;">第${wi+1}週 (${esc(wkLabel)})</div>
-        <table class="excel-preview" style="width:100%;">
-          <thead><tr><th style="background:#f1f5f9;min-width:90px;">時間帯</th>${headerCells}</tr></thead>
-          <tbody>${slotRows}</tbody>
+        <table class="excel-preview" style="width:100%;table-layout:fixed;">
+          <thead><tr><th style="background:#f1f5f9;width:90px;">担当</th>${headerCells}</tr></thead>
+          <tbody>${rows || '<tr><td colspan="8" style="color:#94a3b8;padding:20px;text-align:center;">担当者がいません</td></tr>'}</tbody>
         </table>
       </div>
     `;
   }).join('');
+  // 凡例
+  const legend = ['当直','日直','オンコール','副直','外勤'].map((l, i) => {
+    const k = ['duty','nichoku','oncall','subduty','clinic'][i];
+    return `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;">
+      <span style="display:inline-block;width:14px;height:10px;background:${_TT_KIND_BG[k]};border-radius:2px;"></span>${l}</span>`;
+  }).join('');
   return `
     <div style="overflow:auto;max-width:100%;">
       ${tables}
-      <div style="font-size:13px;color:#64748b;line-height:1.7;">
-        各時間帯にいる担当者とその勤務(列名)を表示します。勤務帯は操作画面で「外来 9:00-12:00 / 日直 9:00-17:00 / 当直 17:00-翌9:00 / 日当直 9:00-翌9:00」が初期値で、変更があれば反映されます。
+      <div style="font-size:12px;color:#64748b;line-height:1.7;margin-top:6px;">
+        各セルは0-24時の横バー。勤務時間は「勤務時間」行のプルダウンで設定した値が反映されます。前日から続く当直明けは半透明で表示。
       </div>
+      <div style="font-size:12px;color:#475569;margin-top:4px;">${legend}</div>
     </div>
   `;
 }
