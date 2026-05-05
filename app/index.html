@@ -1638,6 +1638,62 @@ function removeName(name) {
   renderGrid(); // 日付未設定でも最新の名前行一覧を反映
 }
 
+// 担当者の名前を変更し、関連する全データの参照を一括更新
+function renameName(oldName) {
+  const input = prompt('新しい名前を入力してください', oldName);
+  if (input == null) return;
+  const newName = input.trim();
+  if (!newName || newName === oldName) return;
+  if (names.includes(newName)) { alert(`「${newName}」は既に登録されています`); return; }
+
+  // 1) names 配列内の oldName を newName に置換 (順序維持)
+  const idx = names.indexOf(oldName);
+  if (idx >= 0) names[idx] = newName;
+
+  // 2) name キーの各種辞書を移動
+  if (nameGroups[oldName] !== undefined) { nameGroups[newName] = nameGroups[oldName]; delete nameGroups[oldName]; }
+  if (nameOutsides[oldName] !== undefined) { nameOutsides[newName] = nameOutsides[oldName]; delete nameOutsides[oldName]; }
+  if (gridData[oldName] !== undefined) { gridData[newName] = gridData[oldName]; delete gridData[oldName]; }
+
+  // 3) preAssigned 内の値置換 (date -> { key -> name })
+  Object.keys(preAssigned).forEach(d => {
+    const m = preAssigned[d] || {};
+    Object.keys(m).forEach(k => { if (m[k] === oldName) m[k] = newName; });
+  });
+
+  // 4) 振り分け条件: ペア・外勤先固定の name 参照
+  if (Array.isArray(assignmentRules.pairList)) {
+    assignmentRules.pairList.forEach(p => {
+      if (p.a === oldName) p.a = newName;
+      if (p.b === oldName) p.b = newName;
+    });
+  }
+  if (Array.isArray(assignmentRules.clinicFixed)) {
+    assignmentRules.clinicFixed.forEach(it => { if (it.name === oldName) it.name = newName; });
+  }
+
+  // 5) storedRoster の duty/nichoku/clinics/clinicsNichoku
+  if (storedRoster) {
+    storedRoster.forEach(row => {
+      if (row.duty === oldName)    row.duty = newName;
+      if (row.nichoku === oldName) row.nichoku = newName;
+      if (row.waiting === oldName) row.waiting = newName;
+      if (row.clinics) {
+        Object.keys(row.clinics).forEach(ci => { if (row.clinics[ci] === oldName) row.clinics[ci] = newName; });
+      }
+      if (row.clinicsNichoku) {
+        Object.keys(row.clinicsNichoku).forEach(ci => { if (row.clinicsNichoku[ci] === oldName) row.clinicsNichoku[ci] = newName; });
+      }
+    });
+  }
+
+  saveState();
+  renderGroupsAndNames();
+  renderGrid();
+  if (storedRoster) renderRosterFromStored();
+  else renderPreviewEditable();
+}
+
 function addClinicToName(name, clinicLabel) {
   if (!nameOutsides[name]) nameOutsides[name] = [];
   if (!nameOutsides[name].includes(clinicLabel)) {
@@ -1775,7 +1831,8 @@ function renderGroupsAndNames() {
           ondrop="onDropOnNameTag(event,'${gc.id}','${escQ(name)}')"
           ondragleave="onDragLeaveNameTag(event)">
         <div class="nt-top">
-          <span class="nt-name">${esc(name)}</span>
+          <span class="nt-name" ondblclick="event.stopPropagation();renameName('${escQ(name)}')" title="ダブルクリックで名前変更">${esc(name)}</span>
+          <button class="remove-btn" onclick="event.stopPropagation();renameName('${escQ(name)}')" title="名前を変更" style="color:#64748b;font-weight:600;font-size:11px;">✏</button>
           <button class="remove-btn" onclick="event.stopPropagation();removeName('${escQ(name)}')" title="削除">×</button>
         </div>
         ${clinicBadges ? '<div class="nt-clinics">'+clinicBadges+'</div>' : ''}
