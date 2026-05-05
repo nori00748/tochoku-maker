@@ -2030,6 +2030,54 @@ function toggleColBand(ci) {
   else renderPreviewEditable();
 }
 
+// ===== 勤務時間プルダウン (タイムテーブル連動用) =====
+// ci = -1 の時は当直列 (COLS[0])。それ以外は外勤列 (COLS[ci+1])
+function _bikoSelectHtml(label, ci) {
+  const cur = bikoData[label] || '';
+  // 4種の標準勤務帯のうちどれに該当するか判定 (時間文字列の正規化マッチ)
+  const stdBands = ['外来','日直','当直','日当直'];
+  // ci===-1 (当直列) は colBand を持たないが、bikoData の時刻文字列で判定
+  let matched = '';
+  if (ci >= 0 && colBand[ci]) {
+    matched = colBand[ci];
+  } else {
+    matched = stdBands.find(b => BAND_DEFAULTS[b].time === cur) || '';
+  }
+  const isCustom = !matched && cur;
+  const opts = stdBands.map(b => {
+    const t = BAND_DEFAULTS[b].time;
+    return `<option value="${b}" ${matched===b?'selected':''}>${b} (${t})</option>`;
+  }).join('');
+  const customLabel = isCustom ? `カスタム (${esc(cur)})` : 'カスタム…';
+  const customOpt = `<option value="__custom__" ${isCustom?'selected':''}>${customLabel}</option>`;
+  return `<select class="biko-select" onchange="setBikoBand('${escQ(label)}',${ci},this.value)" style="width:100%;padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;font-size:12px;background:#fff;">
+    ${opts}${customOpt}
+  </select>`;
+}
+// 勤務帯プルダウンの選択ハンドラ
+function setBikoBand(label, ci, val) {
+  if (val === '__custom__') {
+    const input = prompt('勤務時間を入力してください (例: 9:00-12:00)', bikoData[label] || '');
+    if (input != null) {
+      bikoData[label] = input.trim();
+      // colBand はクリア (カスタム時は標準帯に該当しない)
+      if (ci >= 0) delete colBand[ci];
+    } else {
+      // キャンセル: 何もしない (UI 再描画で元に戻る)
+    }
+  } else {
+    const def = BAND_DEFAULTS[val];
+    if (def) {
+      bikoData[label] = def.time;
+      recoveryData[label] = def.recovery;
+      if (ci >= 0) colBand[ci] = val;
+    }
+  }
+  saveState();
+  if (storedRoster) renderRosterFromStored();
+  else renderPreviewEditable();
+}
+
 // ===== Holiday =====
 function toggleHoliday(d) {
   holidayDates[d] = !holidayDates[d];
@@ -2252,11 +2300,11 @@ function renderPreviewEditable() {
   });
   html += `<td></td></tr>`;
 
-  // 勤務時間行 (回復時間はバンドのデフォルトを内部で使用、編集UIはライトプラン実装時に追加予定)
+  // 勤務時間行: 勤務帯プルダウン (外来/日直/当直/日当直/カスタム)
   html += `<tr class="biko-row"><td style="font-weight:bold;white-space:nowrap;padding:3px 6px;">勤務時間</td><td></td>`;
-  html += `<td><input class="biko-input" type="text" value="${esc(bikoData[COLS[0].label]||'')}" oninput="bikoData['${escQ(COLS[0].label)}']=this.value;saveNames()"></td>`;
-  COLS.slice(1).forEach(col => {
-    html += `<td><input class="biko-input" type="text" value="${esc(bikoData[col.label]||'')}" oninput="bikoData['${escQ(col.label)}']=this.value;saveNames()"></td>`;
+  html += `<td>${_bikoSelectHtml(COLS[0].label, -1)}</td>`;
+  COLS.slice(1).forEach((col, ci) => {
+    html += `<td>${_bikoSelectHtml(col.label, ci)}</td>`;
   });
   html += `<td></td></tr>`;
 
@@ -3509,9 +3557,9 @@ function renderRosterFromStored() {
   html += '</tr>';
 
   html += `<tr class="biko-row"><td style="font-weight:bold;padding:3px 6px;">勤務時間</td><td></td>`;
-  html += `<td><input class="biko-input" type="text" value="${esc(bikoData[COLS[0].label]||'')}" oninput="bikoData['${escQ(COLS[0].label)}']=this.value;saveNames()"></td>`;
-  COLS.slice(1).forEach(col => {
-    html += `<td><input class="biko-input" type="text" value="${esc(bikoData[col.label]||'')}" oninput="bikoData['${escQ(col.label)}']=this.value;saveNames()"></td>`;
+  html += `<td>${_bikoSelectHtml(COLS[0].label, -1)}</td>`;
+  COLS.slice(1).forEach((col, ci) => {
+    html += `<td>${_bikoSelectHtml(col.label, ci)}</td>`;
   });
   html += '</tr>';
 
@@ -4296,6 +4344,7 @@ function renderExcelPreview() {
         <option value="date-clinic" ${_previewViewType==='date-clinic'?'selected':''}>日付 × 外勤先</option>
         <option value="name-date"   ${_previewViewType==='name-date'?'selected':''}>担当者 × 日付</option>
         <option value="name-week"   ${_previewViewType==='name-week'?'selected':''}>担当者 × 日付 (週ごと)</option>
+        <option value="week-tt"     ${_previewViewType==='week-tt'?'selected':''}>タイムテーブル (週ごと)</option>
       </select>
       ${isLightOrAbove() ? '' : '<span class="ep-hint">ダウンロードを押すと30秒の広告後にExcelファイルが保存されます。</span>'}
     </div>
@@ -4304,6 +4353,7 @@ function renderExcelPreview() {
   let body = '';
   if (_previewViewType === 'name-date')      body = _renderPreviewNameDate(data);
   else if (_previewViewType === 'name-week') body = _renderPreviewNameWeek(data);
+  else if (_previewViewType === 'week-tt')   body = _renderPreviewWeekTimetable(data);
   else                                       body = _renderPreviewDateClinic(data);
 
   view.innerHTML = toolbar + body;
@@ -4465,6 +4515,114 @@ function _renderPreviewNameWeek(data) {
       ${tables}
       <div style="font-size:13px;color:#64748b;line-height:1.7;">
         凡例: <strong>当</strong>=当直 / <strong>日</strong>=日直 / <strong>オN</strong>=オンコールN / <strong>副N</strong>=副直N / 列名=外勤
+      </div>
+    </div>
+  `;
+}
+
+// View 4: タイムテーブル (週ごと) — 縦=時刻スロット、横=曜日、各セルに勤務者+列名
+const _TT_SLOTS = [
+  { id: 'morning', label: '9:00-12:00',  sub: '午前',   bands: ['外来','日直','日当直'] },
+  { id: 'day',     label: '12:00-17:00', sub: '日中',   bands: ['日直','日当直'] },
+  { id: 'night',   label: '17:00-翌9:00', sub: '夜間',   bands: ['当直','日当直'] }
+];
+function _collectWorkersAt(row, slotBands) {
+  // duty/nichoku/clinics/clinicsNichoku を見て、その slot に該当する勤務者を集める
+  const result = [];
+  const seen = new Set();
+  const push = (name, label, kind) => {
+    if (!name) return;
+    const key = name + '|' + label;
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push({ name, label, kind });
+  };
+  // 当直 (列0)
+  if (slotBands.includes('当直')) push(row.duty,    '当直', 'duty');
+  if (slotBands.includes('日直')) push(row.nichoku, '日直', 'nichoku');
+  // clinics
+  Object.entries(row.clinics || {}).forEach(([ci, n]) => {
+    const idx = Number(ci);
+    const col = COLS[idx + 1];
+    if (!col) return;
+    const band = colBand[idx] || ((col.isOnCall || col.isSubduty) ? '当直' : '');
+    if (!band) return;
+    if (slotBands.includes(band)) {
+      const kind = col.isOnCall ? 'oncall' : col.isSubduty ? 'subduty' : 'clinic';
+      push(n, col.label, kind);
+    }
+  });
+  // clinicsNichoku (オンコール/副直の日直分割)
+  Object.entries(row.clinicsNichoku || {}).forEach(([ci, n]) => {
+    const idx = Number(ci);
+    const col = COLS[idx + 1];
+    if (!col) return;
+    if (slotBands.includes('日直')) {
+      const kind = col.isOnCall ? 'oncall' : col.isSubduty ? 'subduty' : 'clinic';
+      push(n, col.label + '(日)', kind);
+    }
+  });
+  return result;
+}
+function _renderPreviewWeekTimetable(data) {
+  const weeks = _datesByCalendarWeek(data);
+  const KIND_BG = { duty:'#ede9fe', nichoku:'#fef9c3', oncall:'#fce7f3', subduty:'#dcfce7', clinic:'#dbeafe' };
+  const KIND_FG = { duty:'#6d28d9', nichoku:'#a16207', oncall:'#be185d', subduty:'#15803d', clinic:'#1d4ed8' };
+  const tables = weeks.map((wk, wi) => {
+    // 日付ヘッダー
+    const headerCells = wk.items.map((row, w) => {
+      if (!row) return `<th style="background:#f1f5f9;color:#cbd5e1;min-width:120px;font-size:14px;">${WD[w]}</th>`;
+      const isSat = w===6, isSun = w===0, isHol = !!holidayDates[row.d];
+      let bg = '';
+      if      (isHol) bg = '#fce4ec';
+      else if (isSat) bg = '#daeef3';
+      else if (isSun) bg = '#fde9d9';
+      return `<th style="background:${bg};min-width:120px;font-size:14px;">${row.dt.getDate()}<br><span style="font-weight:400;color:#64748b;font-size:12px;">${WD[w]}</span></th>`;
+    }).join('');
+    // 各時刻スロット行
+    const slotRows = _TT_SLOTS.map(slot => {
+      const tds = wk.items.map((row, w) => {
+        if (!row) return `<td style="background:#fafafa;"></td>`;
+        const workers = _collectWorkersAt(row, slot.bands);
+        const isSat = w===6, isSun = w===0, isHol = !!holidayDates[row.d];
+        let cellBg = '#fff';
+        if      (isHol) cellBg = '#fef2f5';
+        else if (isSat) cellBg = '#f0f7fa';
+        else if (isSun) cellBg = '#fdf3ec';
+        const chips = workers.map(wkr => `
+          <div style="display:inline-block;background:${KIND_BG[wkr.kind]||'#f1f5f9'};color:${KIND_FG[wkr.kind]||'#475569'};
+            border-radius:6px;padding:3px 8px;margin:2px 3px 2px 0;font-size:13px;font-weight:600;line-height:1.4;">
+            <span style="font-size:10px;font-weight:500;opacity:.85;">${esc(wkr.label)}</span>
+            <br>${esc(wkr.name)}
+          </div>`).join('');
+        return `<td style="background:${cellBg};vertical-align:top;padding:8px 6px;min-height:60px;">${chips || '<span style="color:#cbd5e1;font-size:11px;">—</span>'}</td>`;
+      }).join('');
+      return `<tr>
+        <th style="background:#f8fafc;text-align:right;padding:8px 12px;font-size:12px;color:#475569;font-weight:700;white-space:nowrap;min-width:90px;">
+          ${slot.label}<br><span style="font-weight:500;color:#94a3b8;font-size:11px;">${slot.sub}</span>
+        </th>
+        ${tds}
+      </tr>`;
+    }).join('');
+    const wkLabel = wk.items.find(r => r) ? (() => {
+      const first = wk.items.find(r => r);
+      return `${first.dt.getMonth()+1}/${first.dt.getDate()} の週`;
+    })() : '';
+    return `
+      <div style="margin-bottom:28px;">
+        <div style="font-weight:700;color:#0f172a;margin-bottom:8px;font-size:16px;">第${wi+1}週 (${esc(wkLabel)})</div>
+        <table class="excel-preview" style="width:100%;">
+          <thead><tr><th style="background:#f1f5f9;min-width:90px;">時間帯</th>${headerCells}</tr></thead>
+          <tbody>${slotRows}</tbody>
+        </table>
+      </div>
+    `;
+  }).join('');
+  return `
+    <div style="overflow:auto;max-width:100%;">
+      ${tables}
+      <div style="font-size:13px;color:#64748b;line-height:1.7;">
+        各時間帯にいる担当者とその勤務(列名)を表示します。勤務帯は操作画面で「外来 9:00-12:00 / 日直 9:00-17:00 / 当直 17:00-翌9:00 / 日当直 9:00-翌9:00」が初期値で、変更があれば反映されます。
       </div>
     </div>
   `;
